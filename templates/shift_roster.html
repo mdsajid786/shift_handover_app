@@ -1,27 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Shift Roster</h2>
+<form method="POST" enctype="multipart/form-data" class="mb-4">
+    <input type="file" name="file" accept=".xlsx" required>
+    <button type="submit" class="btn btn-primary">Upload Roster</button>
+</form>
+{% if all_dates and all_members %}
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>Date</th>
-            {% for engineer in engineers %}
-            <th>{{ engineer.name }}</th>
+            <th>Team Member</th>
+            {% for date in all_dates %}
+            <th>{{ date }}</th>
             {% endfor %}
         </tr>
     </thead>
     <tbody>
-        {% for shift in shifts %}
+        {% for member in all_members %}
         <tr>
-            <td>{{ shift.date }}</td>
-            {% for engineer in engineers %}
-            <td>
-                {% if engineer in shift.current_engineers %}Current{% endif %}
-                {% if engineer in shift.next_engineers %}Next{% endif %}
-            </td>
+            <td>{{ member.name }}</td>
+            {% for date in all_dates %}
+            <td>{{ roster_data[member.name][date] }}</td>
             {% endfor %}
         </tr>
         {% endfor %}
     </tbody>
 </table>
+{% endif %}
 {% endblock %}

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 from flask_login import login_required
-from models.models import Incident, Engineer, Shift
+from models.models import Incident, TeamMember, Shift
 from app import db
 import plotly.graph_objs as go
 import plotly

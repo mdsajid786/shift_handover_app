@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Shift Handover Reports</h2>
+<form method="get" class="mb-3">
+    <div class="row">
+        <div class="col-md-3">
+            <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+        </div>
+        <div class="col-md-3">
+            <select name="shift_type" class="form-control">
+                <option value="">All Shifts</option>
+                <option value="Morning" {% if shift_type_filter=='Morning' %}selected{% endif %}>Morning</option>
+                <option value="Evening" {% if shift_type_filter=='Evening' %}selected{% endif %}>Evening</option>
+                <option value="Night" {% if shift_type_filter=='Night' %}selected{% endif %}>Night</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </div>
+</form>
+{% for entry in shift_data %}
+    <div class="card mb-3">
+        <div class="card-header">
+            Date: {{ entry.shift.date }} | Shift: {{ entry.shift.current_shift_type }}
+        </div>
+        <div class="card-body">
+            <h5>Incidents</h5>
+            <ul>
+                {% for inc in entry.incidents %}
+                <li><b>{{ inc.type }}</b>: {{ inc.title }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}

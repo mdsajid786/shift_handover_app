@@ -1,3 +1,9 @@
+class ShiftRoster(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    team_member_id = db.Column(db.Integer, db.ForeignKey('team_member.id'), nullable=False)
+    shift_code = db.Column(db.String(8), nullable=True)  # E, D, N, G, LE, VL, HL, CO, or blank
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from app import db
@@ -29,6 +35,7 @@ class Incident(db.Model):
     priority = db.Column(db.String(16), nullable=False)
     handover = db.Column(db.Text)
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
+    type = db.Column(db.String(32), nullable=False) # Active, Closed, Priority, Handover
 
 class ShiftKeyPoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
