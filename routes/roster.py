@@ -32,6 +32,6 @@ def roster():
             roster_data[member.name][entry.date] = entry.shift_code
     # For dropdowns
     import calendar
-    months = [(i, calendar.month_name[i]) for i in range(1, 13)]
+    months = [calendar.month_name[i] for i in range(1, 13)]
     years = sorted({d.date.year for d in db.session.query(ShiftRoster.date).distinct() if d.date})
     return render_template('shift_roster.html', all_dates=all_dates, all_members=all_members, roster_data=roster_data, months=months, years=years, selected_month=month, selected_year=year)

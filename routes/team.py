@@ -35,9 +35,16 @@ def team():
             member_id = request.form['member_id']
             member = TeamMember.query.get(member_id)
             if member:
-                db.session.delete(member)
-                db.session.commit()
-                flash('Team member deleted!')
+                try:
+                    db.session.delete(member)
+                    db.session.commit()
+                    flash('Team member deleted!')
+                except Exception as e:
+                    db.session.rollback()
+                    if 'foreign key constraint fails' in str(e).lower():
+                        flash('Cannot delete team member: assigned in shift roster or related records exist.', 'danger')
+                    else:
+                        flash(f'Error deleting team member: {e}', 'danger')
         return redirect(url_for('team.team'))
     members = TeamMember.query.all()
     return render_template('team_details.html', members=members)
