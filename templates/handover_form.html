@@ -26,43 +26,17 @@
     </div>
     <div class="mb-3">
         <label for="current_engineers" class="form-label">Current Shift Engineers</label>
-        <select multiple class="form-control" name="current_engineers">
-            {% for member in team_members %}
-            <option value="{{ member.id }}">{{ member.name }}</option>
-            {% endfor %}
-        </select>
+        <input type="text" class="form-control" name="current_engineers" value="{{ current_engineers|join(', ') }}" readonly>
     </div>
     <div class="mb-3">
         <label for="next_engineers" class="form-label">Next Shift Engineers</label>
-        <select multiple class="form-control" name="next_engineers">
-            {% for member in team_members %}
-            <option value="{{ member.id }}">{{ member.name }}</option>
-            {% endfor %}
-        </select>
+        <input type="text" class="form-control" name="next_engineers" value="{{ next_engineers|join(', ') }}" readonly>
     </div>
     <!-- Open Incidents Section -->
     <div class="mb-3">
         <label>Open Incidents</label>
         <div id="open_incidents">
             <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details">
-        </div>
-    </div>
-    <div class="mb-3">
-        <label>Closed Incidents</label>
-        <div id="closed_incidents">
-            <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details">
-        </div>
-    </div>
-    <div class="mb-3">
-        <label>Priority Incidents</label>
-        <div id="priority_incidents">
-            <input type="text" name="priority_incidents" class="form-control mb-2" placeholder="Priority incident details">
-        </div>
-    </div>
-    <div class="mb-3">
-        <label>Handover Incidents</label>
-        <div id="handover_incidents">
-            <input type="text" name="handover_incidents" class="form-control mb-2" placeholder="Handover incident details">
         </div>
     </div>
     <!-- Key Points Section (moved to bottom, auto-increment) -->
@@ -127,24 +101,6 @@
         container.appendChild(entry);
     }
     </script>
-    <div class="mb-3">
-        <label>Closed Incidents</label>
-        <div id="closed_incidents">
-            <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details">
-        </div>
-    </div>
-    <div class="mb-3">
-        <label>Priority Incidents</label>
-        <div id="priority_incidents">
-            <input type="text" name="priority_incidents" class="form-control mb-2" placeholder="Priority incident details">
-        </div>
-    </div>
-    <div class="mb-3">
-        <label>Handover Incidents</label>
-        <div id="handover_incidents">
-            <input type="text" name="handover_incidents" class="form-control mb-2" placeholder="Handover incident details">
-        </div>
-    </div>
     <button type="submit" class="btn btn-success">Submit Handover</button>
 </form>
 {% endblock %}
