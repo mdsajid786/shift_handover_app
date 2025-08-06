@@ -10,18 +10,18 @@
         <label for="current_shift_type" class="form-label">Current Shift</label>
         <select class="form-control" id="current_shift_type" name="current_shift_type" required>
             <option value="">Select</option>
-            <option value="Morning">Morning</option>
-            <option value="Evening">Evening</option>
-            <option value="Night">Night</option>
+            <option value="Morning" {% if current_shift_type=='Morning' %}selected{% endif %}>Morning</option>
+            <option value="Evening" {% if current_shift_type=='Evening' %}selected{% endif %}>Evening</option>
+            <option value="Night" {% if current_shift_type=='Night' %}selected{% endif %}>Night</option>
         </select>
     </div>
     <div class="mb-3">
         <label for="next_shift_type" class="form-label">Next Shift</label>
         <select class="form-control" id="next_shift_type" name="next_shift_type" required>
             <option value="">Select</option>
-            <option value="Morning">Morning</option>
-            <option value="Evening">Evening</option>
-            <option value="Night">Night</option>
+            <option value="Morning" {% if next_shift_type=='Morning' %}selected{% endif %}>Morning</option>
+            <option value="Evening" {% if next_shift_type=='Evening' %}selected{% endif %}>Evening</option>
+            <option value="Night" {% if next_shift_type=='Night' %}selected{% endif %}>Night</option>
         </select>
     </div>
     <div class="mb-3">
@@ -34,11 +34,29 @@
     </div>
     <!-- Open Incidents Section -->
     <div class="mb-3">
-        <label>Incidents</label>
+        <label>Open Incidents</label>
         <div id="open_incidents">
             <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details">
+        </div>
+    </div>
+    <!-- Closed Incidents Section -->
+    <div class="mb-3">
+        <label>Closed Incidents</label>
+        <div id="closed_incidents">
             <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details">
+        </div>
+    </div>
+    <!-- Priority Incidents Section -->
+    <div class="mb-3">
+        <label>Priority Incidents</label>
+        <div id="priority_incidents">
             <input type="text" name="priority_incidents" class="form-control mb-2" placeholder="Priority incident details">
+        </div>
+    </div>
+    <!-- Handover Incidents Section -->
+    <div class="mb-3">
+        <label>Handover Incidents</label>
+        <div id="handover_incidents">
             <input type="text" name="handover_incidents" class="form-control mb-2" placeholder="Handover incident details">
         </div>
     </div>
