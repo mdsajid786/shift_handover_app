@@ -26,6 +26,16 @@
         </div>
     </div>
 </form>
+<form method="POST" enctype="multipart/form-data" class="mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <input type="file" name="file" accept=".xlsx" required class="form-control">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-success">Upload Roster</button>
+        </div>
+    </div>
+</form>
 {% if all_dates and all_members %}
 <table class="table table-bordered">
     <thead>

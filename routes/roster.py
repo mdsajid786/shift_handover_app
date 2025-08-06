@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, request
 from flask_login import login_required
 from models.models import TeamMember, ShiftRoster
@@ -32,6 +31,7 @@ def roster():
         if member:
             roster_data[member.name][entry.date] = entry.shift_code
     # For dropdowns
-    months = list(range(1, 13))
-    years = sorted({d.year for d in db.session.query(ShiftRoster.date).distinct()})
+    import calendar
+    months = [(i, calendar.month_name[i]) for i in range(1, 13)]
+    years = sorted({d.date.year for d in db.session.query(ShiftRoster.date).distinct() if d.date})
     return render_template('shift_roster.html', all_dates=all_dates, all_members=all_members, roster_data=roster_data, months=months, years=years, selected_month=month, selected_year=year)
