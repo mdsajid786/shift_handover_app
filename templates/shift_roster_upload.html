@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Shift Roster Upload</h2>
+<form method="POST" enctype="multipart/form-data" class="mb-4">
+    <input type="file" name="file" accept=".xlsx" required>
+    <button type="submit" class="btn btn-primary">Upload</button>
+</form>
+{% if table_data %}
+    <h4>Uploaded Roster</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_data %}
+            <tr>
+                {% for col in columns %}<td>{{ row[col] }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}

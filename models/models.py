@@ -7,15 +7,20 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
 
-class Engineer(db.Model):
+class TeamMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    contact_number = db.Column(db.String(32), nullable=False)
+    role = db.Column(db.String(64))
 
 class Shift(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    current_engineers = db.relationship('Engineer', secondary='current_shift_engineers')
-    next_engineers = db.relationship('Engineer', secondary='next_shift_engineers')
+    current_shift_type = db.Column(db.String(16), nullable=False) # Morning/Evening/Night
+    next_shift_type = db.Column(db.String(16), nullable=False)
+    current_engineers = db.relationship('TeamMember', secondary='current_shift_engineers')
+    next_engineers = db.relationship('TeamMember', secondary='next_shift_engineers')
 
 class Incident(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -29,16 +34,16 @@ class ShiftKeyPoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(16), nullable=False) # Open/Closed
-    responsible_engineer_id = db.Column(db.Integer, db.ForeignKey('engineer.id'))
+    responsible_engineer_id = db.Column(db.Integer, db.ForeignKey('team_member.id'))
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
 
 # Association tables
 current_shift_engineers = db.Table('current_shift_engineers',
     db.Column('shift_id', db.Integer, db.ForeignKey('shift.id')),
-    db.Column('engineer_id', db.Integer, db.ForeignKey('engineer.id'))
+    db.Column('team_member_id', db.Integer, db.ForeignKey('team_member.id'))
 )
 
 next_shift_engineers = db.Table('next_shift_engineers',
     db.Column('shift_id', db.Integer, db.ForeignKey('shift.id')),
-    db.Column('engineer_id', db.Integer, db.ForeignKey('engineer.id'))
+    db.Column('team_member_id', db.Integer, db.ForeignKey('team_member.id'))
 )

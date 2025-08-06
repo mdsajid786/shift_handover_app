@@ -7,18 +7,36 @@
         <input type="date" class="form-control" id="date" name="date" required>
     </div>
     <div class="mb-3">
+        <label for="current_shift_type" class="form-label">Current Shift</label>
+        <select class="form-control" id="current_shift_type" name="current_shift_type" required>
+            <option value="">Select</option>
+            <option value="Morning">Morning</option>
+            <option value="Evening">Evening</option>
+            <option value="Night">Night</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="next_shift_type" class="form-label">Next Shift</label>
+        <select class="form-control" id="next_shift_type" name="next_shift_type" required>
+            <option value="">Select</option>
+            <option value="Morning">Morning</option>
+            <option value="Evening">Evening</option>
+            <option value="Night">Night</option>
+        </select>
+    </div>
+    <div class="mb-3">
         <label for="current_engineers" class="form-label">Current Shift Engineers</label>
         <select multiple class="form-control" name="current_engineers">
-            {% for engineer in engineers %}
-            <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+            {% for member in team_members %}
+            <option value="{{ member.id }}">{{ member.name }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="mb-3">
         <label for="next_engineers" class="form-label">Next Shift Engineers</label>
-        <select class="form-control" name="next_engineers">
-            {% for engineer in engineers %}
-            <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+        <select multiple class="form-control" name="next_engineers">
+            {% for member in team_members %}
+            <option value="{{ member.id }}">{{ member.name }}</option>
             {% endfor %}
         </select>
     </div>
