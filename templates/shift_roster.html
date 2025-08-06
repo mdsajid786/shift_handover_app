@@ -1,9 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Shift Roster</h2>
-<form method="POST" enctype="multipart/form-data" class="mb-4">
-    <input type="file" name="file" accept=".xlsx" required>
-    <button type="submit" class="btn btn-primary">Upload Roster</button>
+<form method="GET" class="mb-4 form-inline">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label for="month" class="form-label">Month</label>
+            <select name="month" id="month" class="form-control">
+                <option value="">All</option>
+                {% for m in months %}
+                <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="year" class="form-label">Year</label>
+            <select name="year" id="year" class="form-control">
+                <option value="">All</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </div>
 </form>
 {% if all_dates and all_members %}
 <table class="table table-bordered">

@@ -1,12 +1,13 @@
+
+from app import db
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+
 class ShiftRoster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
     team_member_id = db.Column(db.Integer, db.ForeignKey('team_member.id'), nullable=False)
     shift_code = db.Column(db.String(8), nullable=True)  # E, D, N, G, LE, VL, HL, CO, or blank
-
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
-from app import db
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)

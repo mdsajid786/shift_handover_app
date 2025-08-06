@@ -1,58 +1,37 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+
+from flask import Blueprint, render_template, request
 from flask_login import login_required
 from models.models import TeamMember, ShiftRoster
 from app import db
-import pandas as pd
-from werkzeug.utils import secure_filename
-import os
 from datetime import datetime
 
 roster_bp = Blueprint('roster', __name__)
 
-UPLOAD_FOLDER = '/tmp/uploads'
-ALLOWED_EXTENSIONS = {'xlsx'}
 
-@roster_bp.route('/roster', methods=['GET', 'POST'])
+
+# Shift Roster View with Month/Year filters
+@roster_bp.route('/roster', methods=['GET'])
 @login_required
 def roster():
-    if request.method == 'POST':
-        file = request.files.get('file')
-        if file and file.filename.endswith('.xlsx'):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            file.save(filepath)
-            df = pd.read_excel(filepath, header=None)
-            os.remove(filepath)
-            # First row: dates, first col: team member names
-            dates = [df.iloc[0, j] for j in range(1, df.shape[1])]
-            for i in range(1, df.shape[0]):
-                member_name = df.iloc[i, 0]
-                member = TeamMember.query.filter_by(name=member_name).first()
-                if not member:
-                    member = TeamMember(name=member_name, email='', contact_number='', role='')
-                    db.session.add(member)
-                    db.session.commit()
-                for j, date_val in enumerate(dates):
-                    shift_code = str(df.iloc[i, j+1]) if pd.notnull(df.iloc[i, j+1]) else ''
-                    if date_val:
-                        try:
-                            date_obj = pd.to_datetime(date_val).date()
-                        except Exception:
-                            continue
-                        roster_entry = ShiftRoster(date=date_obj, team_member_id=member.id, shift_code=shift_code)
-                        db.session.add(roster_entry)
-            db.session.commit()
-            flash('Roster uploaded and saved!')
-            return redirect(url_for('roster.roster'))
-    # Display the roster table
-    all_dates = db.session.query(ShiftRoster.date).distinct().order_by(ShiftRoster.date).all()
+    # Get filter values from query params
+    month = request.args.get('month', default=None, type=int)
+    year = request.args.get('year', default=None, type=int)
+    query = db.session.query(ShiftRoster)
+    if month:
+        query = query.filter(db.extract('month', ShiftRoster.date) == month)
+    if year:
+        query = query.filter(db.extract('year', ShiftRoster.date) == year)
+    roster_entries = query.order_by(ShiftRoster.date).all()
     all_members = TeamMember.query.all()
-    roster_data = {}
-    for member in all_members:
-        roster_data[member.name] = {}
-        for date_tuple in all_dates:
-            date = date_tuple[0]
-            entry = ShiftRoster.query.filter_by(date=date, team_member_id=member.id).first()
-            roster_data[member.name][date] = entry.shift_code if entry else ''
-    return render_template('shift_roster.html', all_dates=[d[0] for d in all_dates], all_members=all_members, roster_data=roster_data)
+    # Build a set of all dates in the filtered result
+    all_dates = sorted({entry.date for entry in roster_entries})
+    # Build roster data: {member_name: {date: shift_code}}
+    roster_data = {member.name: {date: '' for date in all_dates} for member in all_members}
+    for entry in roster_entries:
+        member = next((m for m in all_members if m.id == entry.team_member_id), None)
+        if member:
+            roster_data[member.name][entry.date] = entry.shift_code
+    # For dropdowns
+    months = list(range(1, 13))
+    years = sorted({d.year for d in db.session.query(ShiftRoster.date).distinct()})
+    return render_template('shift_roster.html', all_dates=all_dates, all_members=all_members, roster_data=roster_data, months=months, years=years, selected_month=month, selected_year=year)

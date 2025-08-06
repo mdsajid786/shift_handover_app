@@ -7,4 +7,4 @@ def send_handover_email(shift):
     recipients = [current_app.config['TEAM_EMAIL']]
     body = f"Handover summary for shift on {shift.date}."
     msg = Message(subject, recipients=recipients, body=body)
-    mail.send(msg)
+    #mail.send(msg)
