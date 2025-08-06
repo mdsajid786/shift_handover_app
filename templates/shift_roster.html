@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Shift Roster</h2>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Date</th>
+            {% for engineer in engineers %}
+            <th>{{ engineer.name }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for shift in shifts %}
+        <tr>
+            <td>{{ shift.date }}</td>
+            {% for engineer in engineers %}
+            <td>
+                {% if engineer in shift.current_engineers %}Current{% endif %}
+                {% if engineer in shift.next_engineers %}Next{% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

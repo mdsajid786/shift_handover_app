@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<div class="row">
+    <div class="col-md-4">
+        <h4>Open Incidents</h4>
+        <ul>
+            {% for incident in open_incidents %}
+            <li>{{ incident.title }} ({{ incident.priority }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-4">
+        <h4>Current Shift Engineers</h4>
+        <ul>
+            {% for engineer in current_engineers %}
+            <li>{{ engineer.name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-4">
+        <h4>Next Shift Engineers</h4>
+        <ul>
+            {% for engineer in next_engineers %}
+            <li>{{ engineer.name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+<div class="mt-4">
+    <h4>Overview Chart</h4>
+    <div id="chart"></div>
+    <script>
+        var graphJSON = {{ graphJSON|safe }};
+        Plotly.newPlot('chart', graphJSON);
+    </script>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Shift Handover Form</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label for="date" class="form-label">Date</label>
+        <input type="date" class="form-control" id="date" name="date" required>
+    </div>
+    <div class="mb-3">
+        <label for="current_engineers" class="form-label">Current Shift Engineers</label>
+        <select multiple class="form-control" name="current_engineers">
+            {% for engineer in engineers %}
+            <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="next_engineers" class="form-label">Next Shift Engineers</label>
+        <select class="form-control" name="next_engineers">
+            {% for engineer in engineers %}
+            <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Incidents</label>
+        <div id="incidents">
+            <!-- Dynamic incident entries can be added with JS -->
+            <input type="text" name="incidents" class="form-control mb-2" placeholder="Incident details">
+        </div>
+    </div>
+    <div class="mb-3">
+        <label>Shift Key Points</label>
+        <div id="key_points">
+            <input type="text" name="key_points" class="form-control mb-2" placeholder="Key point description">
+        </div>
+    </div>
+    <button type="submit" class="btn btn-success">Submit Handover</button>
+</form>
+{% endblock %}
