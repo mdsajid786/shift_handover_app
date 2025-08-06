@@ -24,8 +24,19 @@ def handover_reports():
     shift_data = []
     for shift in shifts:
         incidents = Incident.query.filter_by(shift_id=shift.id).all()
+        key_points = ShiftKeyPoint.query.filter_by(shift_id=shift.id).all()
+        # Attach responsible engineer name
+        key_points_data = []
+        for kp in key_points:
+            engineer = TeamMember.query.get(kp.responsible_engineer_id)
+            key_points_data.append({
+                'description': kp.description,
+                'status': kp.status,
+                'responsible': engineer.name if engineer else 'N/A'
+            })
         shift_data.append({
             'shift': shift,
-            'incidents': incidents
+            'incidents': incidents,
+            'key_points': key_points_data
         })
     return render_template('handover_reports.html', shift_data=shift_data, date_filter=date_filter or '', shift_type_filter=shift_type_filter or '')

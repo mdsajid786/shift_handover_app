@@ -31,6 +31,14 @@
                 <li><b>{{ inc.type }}</b>: {{ inc.title }}</li>
                 {% endfor %}
             </ul>
+            <h5>Key Points</h5>
+            <ul>
+                {% for kp in entry.key_points %}
+                <li>{{ kp.description }} ({{ kp.status }}, Responsible: {{ kp.responsible }})</li>
+                {% else %}
+                <li>No key points</li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 {% endfor %}
