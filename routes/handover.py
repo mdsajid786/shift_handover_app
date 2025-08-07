@@ -76,6 +76,24 @@ def handover():
         add_incident('closed_incidents', 'Closed')
         add_incident('priority_incidents', 'Priority')
         add_incident('handover_incidents', 'Handover')
+
+        # Key Points
+        key_point_numbers = request.form.getlist('key_point_number')
+        key_point_details = request.form.getlist('key_point_details')
+        responsible_persons = request.form.getlist('responsible_person')
+        key_point_statuses = request.form.getlist('key_point_status')
+        for i in range(len(key_point_numbers)):
+            details = key_point_details[i].strip() if i < len(key_point_details) else ''
+            responsible_id = responsible_persons[i] if i < len(responsible_persons) else ''
+            status = key_point_statuses[i] if i < len(key_point_statuses) else 'Open'
+            if details:
+                kp = ShiftKeyPoint(
+                    description=details,
+                    status=status,
+                    responsible_engineer_id=int(responsible_id) if responsible_id else None,
+                    shift_id=shift.id
+                )
+                db.session.add(kp)
         db.session.commit()
         send_handover_email(shift)
         flash('Handover submitted and email sent!')

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models.models import Shift, Incident
+from models.models import Shift, Incident, ShiftKeyPoint, TeamMember
 from app import db
 from datetime import datetime
 

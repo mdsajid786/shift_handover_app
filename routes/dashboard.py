@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models.models import Incident, TeamMember, ShiftRoster, ShiftKeyPoint
+from models.models import Incident, TeamMember, ShiftRoster, ShiftKeyPoint, Shift
 from app import db
 import plotly.graph_objs as go
 import plotly
@@ -36,10 +36,44 @@ def get_engineers_for_shift(date, shift_code):
 @dashboard_bp.route('/')
 @login_required
 def dashboard():
-    open_incidents = Incident.query.filter_by(status='Active').all()
-    open_key_points = ShiftKeyPoint.query.filter_by(status='Open').all()
+    # Date range filter
+    range_opt = request.args.get('range', '7d')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    # Remove single_date, only support custom range and standard options
     ist_now = get_ist_now()
     today = ist_now.date()
+    if range_opt == '1d':
+        from_date = today - timedelta(days=1)
+        to_date = today
+    elif range_opt == '7d':
+        from_date = today - timedelta(days=7)
+        to_date = today
+    elif range_opt == '30d':
+        from_date = today - timedelta(days=30)
+        to_date = today
+    elif range_opt == '1y':
+        from_date = today - timedelta(days=365)
+        to_date = today
+    elif range_opt == 'custom' and start_date and end_date:
+        from_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        to_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    else:  # default 7d
+        from_date = today - timedelta(days=7)
+        to_date = today
+
+    # Summary counts for chart
+    open_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
+    open_count = open_count.filter(Incident.status=='Active', Incident.type=='Active', Shift.date >= from_date, Shift.date <= to_date).count()
+    closed_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
+    closed_count = closed_count.filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date >= from_date, Shift.date <= to_date).count()
+    priority_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
+    priority_count = priority_count.filter(Incident.type=='Priority', Shift.date >= from_date, Shift.date <= to_date).count()
+
+    # For widget display (current day)
+    open_incidents = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
+        .filter(Incident.status=='Active', Shift.date==today).all()
+    open_key_points = ShiftKeyPoint.query.filter_by(status='Open').all()
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
     current_shift_type, next_shift_type = get_shift_type_and_next(ist_now)
     current_shift_code = shift_map[current_shift_type]
@@ -56,10 +90,43 @@ def dashboard():
         next_engineers = get_engineers_for_shift(next_date, next_shift_code)
     else:
         next_engineers = get_engineers_for_shift(today, next_shift_code)
-    # Chart.js/Plotly example
-    incident_counts = [len(open_incidents), len(current_engineers), len(next_engineers)]
-    labels = ['Open Incidents', 'Current Engineers', 'Next Engineers']
-    bar = go.Bar(x=labels, y=incident_counts)
-    data = [bar]
-    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
-    return render_template('dashboard.html', open_incidents=open_incidents, current_engineers=current_engineers, next_engineers=next_engineers, graphJSON=graphJSON, open_key_points=open_key_points)
+
+    # Date-wise chart data
+    date_list = [(from_date + timedelta(days=i)) for i in range((to_date - from_date).days + 1)]
+    open_counts = []
+    closed_counts = []
+    handover_counts = []
+    priority_counts = []
+    for d in date_list:
+        open_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
+            .filter(Incident.status=='Active', Incident.type=='Active', Shift.date==d).count()
+        closed_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
+            .filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date==d).count()
+        handover_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
+            .filter(Incident.type=='Handover', Shift.date==d).count()
+        priority_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
+            .filter(Incident.type=='Priority', Shift.date==d).count()
+        open_counts.append(open_c)
+        closed_counts.append(closed_c)
+        handover_counts.append(handover_c)
+        priority_counts.append(priority_c)
+
+    x_dates = [d.strftime('%Y-%m-%d') for d in date_list]
+    trace_open = go.Bar(x=x_dates, y=open_counts, name='Open Incidents')
+    trace_closed = go.Bar(x=x_dates, y=closed_counts, name='Closed Incidents')
+    trace_handover = go.Bar(x=x_dates, y=handover_counts, name='Handover Incidents')
+    trace_priority = go.Bar(x=x_dates, y=priority_counts, name='Priority Incidents')
+    data = [trace_open, trace_closed, trace_handover, trace_priority]
+    layout = go.Layout(barmode='group', xaxis={'title': 'Date'}, yaxis={'title': 'Count'}, title='Incidents by Date')
+    graphJSON = json.dumps({'data': data, 'layout': layout}, cls=plotly.utils.PlotlyJSONEncoder)
+    return render_template(
+        'dashboard.html',
+        open_incidents=open_incidents,
+        current_engineers=current_engineers,
+        next_engineers=next_engineers,
+        graphJSON=graphJSON,
+        open_key_points=open_key_points,
+        selected_range=range_opt,
+        start_date=start_date or from_date.strftime('%Y-%m-%d'),
+        end_date=end_date or to_date.strftime('%Y-%m-%d')
+    )

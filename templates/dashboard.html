@@ -3,22 +3,46 @@
 <h2>Dashboard</h2>
 <div class="row">
     <div class="col-md-4">
-        <h4>Open Incidents</h4>
-        <ul>
-            {% for incident in open_incidents %}
-            <li>{{ incident.title }} ({{ incident.priority }})</li>
-            {% endfor %}
-        </ul>
+        <div class="card mb-3">
+            <div class="card-header">Open Incidents</div>
+            <div class="card-body">
+                <ul>
+                    {% for incident in open_incidents %}
+                    <li>{{ incident.title }} ({{ incident.priority }})</li>
+                    {% else %}
+                    <li>No open incidents</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
     <div class="col-md-4">
-        <h4>Current Shift Engineers</h4>
-        <ul>
-            {% for engineer in current_engineers %}
-            <li>{{ engineer.name }}</li>
-            {% endfor %}
-        </ul>
+        <div class="card mb-3">
+            <div class="card-header">Current Shift Engineers</div>
+            <div class="card-body">
+                <ul>
+                    {% for engineer in current_engineers %}
+                    <li>{{ engineer.name }}</li>
+                    {% else %}
+                    <li>No current shift engineers</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
     <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">Next Shift Engineers</div>
+            <div class="card-body">
+                <ul>
+                    {% for engineer in next_engineers %}
+                    <li>{{ engineer.name }}</li>
+                    {% else %}
+                    <li>No next shift engineers</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
         <div class="card">
             <div class="card-header">Open Key Points</div>
             <div class="card-body">
@@ -35,10 +59,48 @@
 </div>
 <div class="mt-4">
     <h4>Overview Chart</h4>
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label for="range" class="form-label">Date Range</label>
+            <select name="range" id="range" class="form-control">
+                <option value="1d" {% if selected_range == '1d' %}selected{% endif %}>Last 1 Day</option>
+                <option value="7d" {% if selected_range == '7d' or not selected_range %}selected{% endif %}>Last 7 Days</option>
+                <option value="30d" {% if selected_range == '30d' %}selected{% endif %}>Last 1 Month</option>
+                <option value="1y" {% if selected_range == '1y' %}selected{% endif %}>Last 1 Year</option>
+                <option value="custom" {% if selected_range == 'custom' %}selected{% endif %}>Custom</option>
+            </select>
+        </div>
+        <div class="col-auto" id="custom-date-fields" {% if selected_range != 'custom' %}style="display:none;"{% endif %}>
+            <label for="start_date" class="form-label">From</label>
+            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
+            <label for="end_date" class="form-label">To</label>
+            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+        </div>
+        <!-- Single date field removed -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+    </form>
     <div id="chart"></div>
     <script>
+        document.getElementById('range').addEventListener('change', function() {
+            var customFields = document.getElementById('custom-date-fields');
+            if (this.value === 'custom') {
+                customFields.style.display = '';
+            } else {
+                customFields.style.display = 'none';
+            }
+        });
         var graphJSON = {{ graphJSON|safe }};
-        Plotly.newPlot('chart', graphJSON);
+        if (typeof graphJSON === 'object') {
+            Plotly.newPlot('chart', graphJSON.data, graphJSON.layout);
+        } else {
+            var parsed = graphJSON;
+            if (typeof graphJSON === 'string') {
+                parsed = JSON.parse(graphJSON);
+            }
+            Plotly.newPlot('chart', parsed.data, parsed.layout);
+        }
     </script>
 </div>
 {% endblock %}
