@@ -118,11 +118,14 @@ def handover():
             next_engineers_objs = get_engineers_for_shift(today, next_shift_code)
         current_engineers = [m.name for m in current_engineers_objs]
         next_engineers = [m.name for m in next_engineers_objs]
+        # Fetch all open key points to carry forward
+        open_key_points = ShiftKeyPoint.query.filter_by(status='Open').all()
         return render_template(
             'handover_form.html',
             team_members=team_members,
             current_engineers=current_engineers,
             next_engineers=next_engineers,
             current_shift_type=current_shift_type,
-            next_shift_type=next_shift_type
+            next_shift_type=next_shift_type,
+            open_key_points=open_key_points
         )

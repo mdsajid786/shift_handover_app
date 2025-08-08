@@ -64,9 +64,36 @@
     <div class="mb-3">
         <label>Key Points</label>
         <div id="key_points">
+            {% set kp_count = 1 %}
+            {% for kp in open_key_points %}
             <div class="key-point-entry row mb-2">
                 <div class="col-2">
-                    <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="1" readonly>
+                    <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="{{ loop.index }}" readonly>
+                </div>
+                <div class="col-4">
+                    <input type="text" name="key_point_details" class="form-control" placeholder="Details" value="{{ kp.description }}">
+                </div>
+                <div class="col-3">
+                    <select name="responsible_person" class="form-control">
+                        <option value="">Responsible Person</option>
+                        {% for member in team_members %}
+                        <option value="{{ member.id }}" {% if kp.responsible_engineer_id == member.id %}selected{% endif %}>{{ member.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3">
+                    <select name="key_point_status" class="form-control">
+                        <option value="Open" {% if kp.status == 'Open' %}selected{% endif %}>Open</option>
+                        <option value="In Progress" {% if kp.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                        <option value="Closed" {% if kp.status == 'Closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                </div>
+            </div>
+            {% endfor %}
+            <!-- Blank row for new key point entry -->
+            <div class="key-point-entry row mb-2">
+                <div class="col-2">
+                    <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="{{ (open_key_points|length) + 1 }}" readonly>
                 </div>
                 <div class="col-4">
                     <input type="text" name="key_point_details" class="form-control" placeholder="Details">

@@ -15,6 +15,8 @@ def roster():
     # Get filter values from query params
     month = request.args.get('month', default=None, type=int)
     year = request.args.get('year', default=None, type=int)
+    filter_date = request.args.get('filter_date')
+    filter_shift = request.args.get('filter_shift')
     query = db.session.query(ShiftRoster)
     if month:
         query = query.filter(db.extract('month', ShiftRoster.date) == month)
@@ -34,4 +36,40 @@ def roster():
     import calendar
     months = [calendar.month_name[i] for i in range(1, 13)]
     years = sorted({d.date.year for d in db.session.query(ShiftRoster.date).distinct() if d.date})
-    return render_template('shift_roster.html', all_dates=all_dates, all_members=all_members, roster_data=roster_data, months=months, years=years, selected_month=month, selected_year=year)
+
+    # Additional filter: present team members for selected date and shift
+    present_members = []
+    present_members_by_shift = {}
+    if filter_date:
+        date_obj = datetime.strptime(filter_date, '%Y-%m-%d').date()
+        if filter_shift is not None and filter_shift != '':
+            present_entries = ShiftRoster.query.filter(ShiftRoster.date == date_obj, ShiftRoster.shift_code == filter_shift).all()
+            present_member_ids = [e.team_member_id for e in present_entries]
+            present_members = TeamMember.query.filter(TeamMember.id.in_(present_member_ids)).all() if present_member_ids else []
+        else:
+            # Group by shift_code, including LE (Late Evening) and G (General)
+            shift_codes = ['D', 'E', 'N', 'LE', 'G']
+            for code in shift_codes:
+                entries = ShiftRoster.query.filter(ShiftRoster.date == date_obj, ShiftRoster.shift_code == code).all()
+                member_ids = [e.team_member_id for e in entries]
+                members = TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+                present_members_by_shift[code] = members
+            # Ensure all shift codes are present in the dict, even if empty
+            for code in shift_codes:
+                if code not in present_members_by_shift:
+                    present_members_by_shift[code] = []
+
+    return render_template(
+        'shift_roster.html',
+        all_dates=all_dates,
+        all_members=all_members,
+        roster_data=roster_data,
+        months=months,
+        years=years,
+        selected_month=month,
+        selected_year=year,
+        filter_date=filter_date,
+        filter_shift=filter_shift,
+        present_members=present_members,
+        present_members_by_shift=present_members_by_shift if 'present_members_by_shift' in locals() else {}
+    )

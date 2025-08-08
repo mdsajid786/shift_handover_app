@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Shift Roster</h2>
+<!-- Full Roster Filter: Month/Year -->
 <form method="GET" class="mb-4 form-inline">
     <div class="row g-2 align-items-end">
         <div class="col-auto">
@@ -22,7 +23,29 @@
             </select>
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Filter</button>
+            <button type="submit" class="btn btn-primary">Show Roster</button>
+        </div>
+    </div>
+</form>
+
+<!-- Present Team Members Filter: Date/Shift -->
+<form method="GET" class="mb-4 form-inline">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label for="filter_date" class="form-label">Date</label>
+            <input type="date" name="filter_date" id="filter_date" class="form-control" value="{{ filter_date or '' }}">
+        </div>
+        <div class="col-auto">
+            <label for="filter_shift" class="form-label">Shift</label>
+            <select name="filter_shift" id="filter_shift" class="form-control">
+                <option value="">All</option>
+                <option value="D" {% if filter_shift == 'D' %}selected{% endif %}>Day</option>
+                <option value="E" {% if filter_shift == 'E' %}selected{% endif %}>Evening</option>
+                <option value="N" {% if filter_shift == 'N' %}selected{% endif %}>Night</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Show Present Team</button>
         </div>
     </div>
 </form>
@@ -36,6 +59,37 @@
         </div>
     </div>
 </form>
+{% if filter_date %}
+    {% if filter_shift and present_members %}
+    <div class="mb-4">
+        <h5>Present Team Members for {{ filter_date }} (Shift: {{ filter_shift }})</h5>
+        <ul>
+            {% for member in present_members %}
+            <li>{{ member.name }}</li>
+            {% else %}
+            <li>No team members found for this shift.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% elif present_members_by_shift %}
+    <div class="mb-4">
+        <h5>Present Team Members for {{ filter_date }} (All Shifts)</h5>
+        {% for code, members in present_members_by_shift.items() %}
+            <strong>
+                {% if code == 'D' %}Day{% elif code == 'E' %}Evening{% elif code == 'N' %}Night{% elif code == 'LE' %}Late Evening{% elif code == 'G' %}General{% else %}{{ code }}{% endif %}:
+            </strong>
+            <ul>
+            {% for member in members %}
+                <li>{{ member.name }}</li>
+            {% else %}
+                <li>No team members found for this shift.</li>
+            {% endfor %}
+            </ul>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endif %}
+
 {% if all_dates and all_members %}
 <table class="table table-bordered">
     <thead>
