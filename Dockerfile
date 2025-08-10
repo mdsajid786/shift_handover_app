@@ -15,7 +15,7 @@ RUN apt-get update && \
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt && pip install alembic
 
 # Copy project
 COPY . /app/
