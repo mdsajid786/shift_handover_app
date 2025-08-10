@@ -71,9 +71,24 @@ def dashboard():
     priority_count = priority_count.filter(Incident.type=='Priority', Shift.date >= from_date, Shift.date <= to_date).count()
 
     # For widget display (current day)
-    open_incidents = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
-        .filter(Incident.status=='Active', Shift.date==today).all()
-    open_key_points = ShiftKeyPoint.query.filter_by(status='Open').all()
+    # Deduplicate open incidents by title (show only latest per title)
+    inc_subq = db.session.query(
+        Incident.title,
+        db.func.max(Incident.id).label('max_id')
+    ).filter(Incident.status=='Active', Incident.type=='Active', Shift.date==today).group_by(Incident.title).subquery()
+    open_incidents = db.session.query(Incident).join(
+        inc_subq, Incident.id == inc_subq.c.max_id
+    ).all()
+
+    # Deduplicate open key points by description and jira_id (show only latest per pair), only non-Closed
+    kp_subq = db.session.query(
+        ShiftKeyPoint.description,
+        ShiftKeyPoint.jira_id,
+        db.func.max(ShiftKeyPoint.id).label('max_id')
+    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress'])).group_by(ShiftKeyPoint.description, ShiftKeyPoint.jira_id).subquery()
+    open_key_points = db.session.query(ShiftKeyPoint).join(
+        kp_subq, ShiftKeyPoint.id == kp_subq.c.max_id
+    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress'])).all()
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
     current_shift_type, next_shift_type = get_shift_type_and_next(ist_now)
     current_shift_code = shift_map[current_shift_type]

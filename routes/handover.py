@@ -109,14 +109,39 @@ def edit_handover(shift_id):
             responsible_id = responsible_persons[i] if i < len(responsible_persons) else ''
             status = key_point_statuses[i] if i < len(key_point_statuses) else 'Open'
             if details:
-                kp = ShiftKeyPoint(
-                    description=details,
-                    status=status,
-                    responsible_engineer_id=int(responsible_id) if responsible_id else None,
-                    shift_id=shift.id,
-                    jira_id=jira_id if jira_id else None
-                )
-                db.session.add(kp)
+                # If status is being set to Closed, close all previous open/in-progress key points with same description and jira_id
+                if status == 'Closed':
+                    prev_kps = ShiftKeyPoint.query.filter(
+                        ShiftKeyPoint.description == details,
+                        ShiftKeyPoint.jira_id == (jira_id if jira_id else None),
+                        ShiftKeyPoint.status.in_(['Open', 'In Progress'])
+                    ).all()
+                    for pkp in prev_kps:
+                        pkp.status = 'Closed'
+                        db.session.add(pkp)
+                    # Do not add a new key point for closed status
+                    continue
+                # Try to find all existing open/in-progress key points with the same description and jira_id
+                existing_kps = ShiftKeyPoint.query.filter(
+                    ShiftKeyPoint.description == details,
+                    ShiftKeyPoint.jira_id == (jira_id if jira_id else None),
+                    ShiftKeyPoint.status.in_(['Open', 'In Progress'])
+                ).all()
+                if existing_kps:
+                    for existing_kp in existing_kps:
+                        existing_kp.shift_id = shift.id
+                        existing_kp.responsible_engineer_id = int(responsible_id) if responsible_id else None
+                        existing_kp.status = status
+                        db.session.add(existing_kp)
+                else:
+                    kp = ShiftKeyPoint(
+                        description=details,
+                        status=status,
+                        responsible_engineer_id=int(responsible_id) if responsible_id else None,
+                        shift_id=shift.id,
+                        jira_id=jira_id if jira_id else None
+                    )
+                    db.session.add(kp)
         db.session.commit()
         if action == 'send':
             import logging
@@ -139,7 +164,14 @@ def edit_handover(shift_id):
     # GET: populate form with existing data
     current_engineers = [m.name for m in shift.current_engineers]
     next_engineers = [m.name for m in shift.next_engineers]
-    open_key_points = ShiftKeyPoint.query.filter_by(shift_id=shift.id).all()
+    # Deduplicate open key points for this shift by (description, jira_id), only non-Closed
+    all_kps = [kp for kp in ShiftKeyPoint.query.filter_by(shift_id=shift.id).all() if kp.status in ('Open', 'In Progress')]
+    kp_map = {}
+    for kp in all_kps:
+        key = (kp.description, kp.jira_id)
+        if key not in kp_map or kp.id > kp_map[key].id:
+            kp_map[key] = kp
+    open_key_points = list(kp_map.values())
     return render_template('handover_form.html',
         team_members=team_members,
         current_engineers=current_engineers,
@@ -224,14 +256,39 @@ def handover():
             responsible_id = responsible_persons[i] if i < len(responsible_persons) else ''
             status = key_point_statuses[i] if i < len(key_point_statuses) else 'Open'
             if details:
-                kp = ShiftKeyPoint(
-                    description=details,
-                    status=status,
-                    responsible_engineer_id=int(responsible_id) if responsible_id else None,
-                    shift_id=shift.id,
-                    jira_id=jira_id if jira_id else None
-                )
-                db.session.add(kp)
+                # If status is being set to Closed, close all previous open/in-progress key points with same description and jira_id
+                if status == 'Closed':
+                    prev_kps = ShiftKeyPoint.query.filter(
+                        ShiftKeyPoint.description == details,
+                        ShiftKeyPoint.jira_id == (jira_id if jira_id else None),
+                        ShiftKeyPoint.status.in_(['Open', 'In Progress'])
+                    ).all()
+                    for pkp in prev_kps:
+                        pkp.status = 'Closed'
+                        db.session.add(pkp)
+                    # Do not add a new key point for closed status
+                    continue
+                # Try to find all existing open/in-progress key points with the same description and jira_id
+                existing_kps = ShiftKeyPoint.query.filter(
+                    ShiftKeyPoint.description == details,
+                    ShiftKeyPoint.jira_id == (jira_id if jira_id else None),
+                    ShiftKeyPoint.status.in_(['Open', 'In Progress'])
+                ).all()
+                if existing_kps:
+                    for existing_kp in existing_kps:
+                        existing_kp.shift_id = shift.id
+                        existing_kp.responsible_engineer_id = int(responsible_id) if responsible_id else None
+                        existing_kp.status = status
+                        db.session.add(existing_kp)
+                else:
+                    kp = ShiftKeyPoint(
+                        description=details,
+                        status=status,
+                        responsible_engineer_id=int(responsible_id) if responsible_id else None,
+                        shift_id=shift.id,
+                        jira_id=jira_id if jira_id else None
+                    )
+                    db.session.add(kp)
         db.session.commit()
         if action == 'send':
             import logging
@@ -276,13 +333,22 @@ def handover():
         next_engineers_objs = get_engineers_for_shift(default_date, shift_map[next_shift_type])
     current_engineers = [m.name for m in current_engineers_objs]
     next_engineers = [m.name for m in next_engineers_objs]
-    # Carry forward all open/in-progress key points from all previous 'sent' shifts before today
-    prev_shifts = Shift.query.filter(Shift.date < default_date, Shift.status == 'sent').all()
-    open_key_points = []
+    # Carry forward all open/in-progress key points from all previous and current 'sent' shifts (date <= today), deduplicated by (description, jira_id), and only non-Closed
+    prev_shifts = Shift.query.filter(Shift.date <= default_date, Shift.status == 'sent').all()
+    all_prev_kps = []
     for prev_shift in prev_shifts:
-        open_key_points.extend([
+        all_prev_kps.extend([
             kp for kp in ShiftKeyPoint.query.filter_by(shift_id=prev_shift.id).all() if kp.status in ('Open', 'In Progress')
         ])
+    # Deduplicate: keep only the latest (by id) for each (description, jira_id) pair, and only if not Closed
+    kp_map = {}
+    for kp in all_prev_kps:
+        if kp.status == 'Closed':
+            continue
+        key = (kp.description, kp.jira_id)
+        if key not in kp_map or kp.id > kp_map[key].id:
+            kp_map[key] = kp
+    open_key_points = list(kp_map.values())
     # Always show at least one blank row for new key point entry in the form
     return render_template('handover_form.html',
         team_members=team_members,

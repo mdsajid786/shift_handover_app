@@ -16,12 +16,17 @@ def roster():
     import calendar
     month_str = request.args.get('month')
     year = request.args.get('year', default=None, type=int)
+    now = datetime.now()
     month = None
     if month_str:
         try:
             month = list(calendar.month_name).index(month_str)
         except ValueError:
             month = None
+    if not month:
+        month = now.month
+    if not year:
+        year = now.year
     filter_date = request.args.get('filter_date')
     filter_shift = request.args.get('filter_shift')
     query = db.session.query(ShiftRoster)
