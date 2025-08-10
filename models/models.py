@@ -28,6 +28,7 @@ class Shift(db.Model):
     next_shift_type = db.Column(db.String(16), nullable=False)
     current_engineers = db.relationship('TeamMember', secondary='current_shift_engineers')
     next_engineers = db.relationship('TeamMember', secondary='next_shift_engineers')
+    status = db.Column(db.String(16), nullable=False, default='draft')  # draft or sent
 
 class Incident(db.Model):
     id = db.Column(db.Integer, primary_key=True)

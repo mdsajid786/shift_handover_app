@@ -39,12 +39,12 @@ def handover():
         date_str = request.form['date']
         current_shift_type = request.form['current_shift_type']
         next_shift_type = request.form['next_shift_type']
+        action = request.form.get('action', 'send')  # 'save' or 'send'
         # Parse date
         date = datetime.strptime(date_str, '%Y-%m-%d').date()
         shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
         current_shift_code = shift_map[current_shift_type]
         next_shift_code = shift_map[next_shift_type]
-        # For night shift, if before 6:45, use previous day for current shift
         ist_now = get_ist_now()
         if current_shift_type == 'Night' and ist_now.time() < dt_time(6,45):
             night_date = date - timedelta(days=1)
@@ -56,8 +56,9 @@ def handover():
             next_engineers_objs = get_engineers_for_shift(next_date, next_shift_code)
         else:
             next_engineers_objs = get_engineers_for_shift(date, next_shift_code)
-        # Save shift
-        shift = Shift(date=date, current_shift_type=current_shift_type, next_shift_type=next_shift_type)
+        # Save shift with status
+        shift_status = 'draft' if action == 'save' else 'sent'
+        shift = Shift(date=date, current_shift_type=current_shift_type, next_shift_type=next_shift_type, status=shift_status)
         db.session.add(shift)
         db.session.commit()
         for member in current_engineers_objs:
@@ -95,8 +96,11 @@ def handover():
                 )
                 db.session.add(kp)
         db.session.commit()
-        send_handover_email(shift)
-        flash('Handover submitted and email sent!')
+        if action == 'send':
+            send_handover_email(shift)
+            flash('Handover submitted and email sent!')
+        else:
+            flash('Handover saved as draft.')
         return redirect(url_for('dashboard.dashboard'))
     else:
         # GET: auto-populate engineers using dashboard logic
