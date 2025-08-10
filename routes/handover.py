@@ -1,6 +1,43 @@
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required, current_user
+from models.models import TeamMember, Shift, Incident, ShiftKeyPoint, ShiftRoster, current_shift_engineers, next_shift_engineers
+from app import db
+from services.email_service import send_handover_email
+from datetime import datetime, timedelta, time as dt_time
+import pytz
+
+handover_bp = Blueprint('handover', __name__)
+
+# API endpoint to fetch engineers for a given date and shift type
+@handover_bp.route('/api/get_engineers', methods=['GET'])
+@login_required
+def get_engineers():
+    date_str = request.args.get('date')
+    shift_type = request.args.get('shift_type')
+    if not date_str or not shift_type:
+        return jsonify({'error': 'Missing date or shift_type'}), 400
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'error': 'Invalid date format'}), 400
+    shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
+    shift_code = shift_map.get(shift_type)
+    if not shift_code:
+        return jsonify({'error': 'Invalid shift_type'}), 400
+    # Night shift logic
+    ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    if shift_type == 'Night' and ist_now.time() < dt_time(6,45):
+        date = date - timedelta(days=1)
+    entries = ShiftRoster.query.filter_by(date=date, shift_code=shift_code).all()
+    member_ids = [e.team_member_id for e in entries]
+    engineers = TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+    return jsonify({'engineers': [e.name for e in engineers]})
+
 @handover_bp.route('/handover/drafts')
 @login_required
 def handover_drafts():
+    # Show all drafts (no created_by field in Shift model)
     drafts = Shift.query.filter_by(status='draft').all()
     return render_template('handover_drafts.html', drafts=drafts)
 
@@ -9,6 +46,12 @@ def handover_drafts():
 def edit_handover(shift_id):
     shift = Shift.query.get_or_404(shift_id)
     team_members = TeamMember.query.all()
+    # Fetch incidents by type for prepopulation
+    open_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Active').all()]
+    closed_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Closed').all()]
+    priority_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Priority').all()]
+    handover_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Handover').all()]
+
     if request.method == 'POST':
         shift.date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
         shift.current_shift_type = request.form['current_shift_type']
@@ -73,16 +116,27 @@ def edit_handover(shift_id):
                 db.session.add(kp)
         db.session.commit()
         if action == 'send':
-            send_handover_email(shift)
-            flash('Handover submitted and email sent!')
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logging.debug(f"[EMAIL] Attempting to send handover email for shift_id={shift.id}, date={shift.date}, current_shift_type={shift.current_shift_type}, next_shift_type={shift.next_shift_type}")
+            try:
+                send_handover_email(shift)
+                logging.debug(f"[EMAIL] Email sent successfully for shift_id={shift.id}")
+                flash('Handover submitted and email sent!')
+            except Exception as e:
+                logging.error(f"[EMAIL] Failed to send email for shift_id={shift.id}: {e}")
+                flash(f'Error sending email: {e}')
         else:
             flash('Draft updated.')
-        return redirect(url_for('handover.handover_drafts'))
+        # After save or send, redirect to drafts (for save) or reports (for send)
+        if action == 'save':
+            return redirect(url_for('reports.handover_reports'))
+        else:
+            return redirect(url_for('reports.handover_reports'))
     # GET: populate form with existing data
     current_engineers = [m.name for m in shift.current_engineers]
     next_engineers = [m.name for m in shift.next_engineers]
     open_key_points = ShiftKeyPoint.query.filter_by(shift_id=shift.id).all()
-    # For incidents, you may want to prepopulate as well (not shown here)
     return render_template('handover_form.html',
         team_members=team_members,
         current_engineers=current_engineers,
@@ -90,44 +144,151 @@ def edit_handover(shift_id):
         current_shift_type=shift.current_shift_type,
         next_shift_type=shift.next_shift_type,
         open_key_points=open_key_points,
-        shift=shift
+        shift=shift,
+        open_incidents=open_incidents,
+        closed_incidents=closed_incidents,
+        priority_incidents=priority_incidents,
+        handover_incidents=handover_incidents
     )
 
 
-# --- Imports and Blueprint definition moved to top of file ---
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
-from models.models import TeamMember, Shift, Incident, ShiftKeyPoint, ShiftRoster, current_shift_engineers, next_shift_engineers
-from app import db
-from services.email_service import send_handover_email
-from datetime import datetime, timedelta, time as dt_time
-import pytz
 
-handover_bp = Blueprint('handover', __name__)
-
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
-from models.models import TeamMember, Shift, Incident, ShiftKeyPoint, ShiftRoster, current_shift_engineers, next_shift_engineers
-from app import db
-from services.email_service import send_handover_email
-from datetime import datetime, timedelta, time as dt_time
-import pytz
-
-handover_bp = Blueprint('handover', __name__)
 
 @handover_bp.route('/handover', methods=['GET', 'POST'])
 @login_required
 def handover():
     team_members = TeamMember.query.all()
-
-    def get_ist_now():
-        utc_now = datetime.utcnow()
-        ist = pytz.timezone('Asia/Kolkata')
-        return utc_now.replace(tzinfo=pytz.utc).astimezone(ist)
-
-    def get_shift_type_and_next(now):
-        t = now.time()
-        if dt_time(6,30) <= t < dt_time(15,30):
-            return 'Morning', 'Evening'
-        elif dt_time(14,45) <= t < dt_time(23,45):
+    ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    default_date = ist_now.date()
+    shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
+    # POST: Save as draft or send
+    if request.method == 'POST':
+        # Get form data
+        date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+        current_shift_type = request.form['current_shift_type']
+        next_shift_type = request.form['next_shift_type']
+        action = request.form.get('action', 'send')
+        # Create new Shift record
+        shift = Shift(
+            date=date,
+            current_shift_type=current_shift_type,
+            next_shift_type=next_shift_type,
+            status='draft' if action == 'save' else 'sent'
+        )
+        db.session.add(shift)
+        db.session.commit()
+        # Populate engineers
+        current_shift_code = shift_map[current_shift_type]
+        next_shift_code = shift_map[next_shift_type]
+        def get_engineers_for_shift(date, shift_code):
+            entries = ShiftRoster.query.filter_by(date=date, shift_code=shift_code).all()
+            member_ids = [e.team_member_id for e in entries]
+            return TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+        if current_shift_type == 'Night' and ist_now.time() < dt_time(6,45):
+            night_date = date - timedelta(days=1)
+            current_engineers_objs = get_engineers_for_shift(night_date, current_shift_code)
+        else:
+            current_engineers_objs = get_engineers_for_shift(date, current_shift_code)
+        if next_shift_type == 'Night' and ist_now.time() >= dt_time(21,45):
+            next_date = date + timedelta(days=1)
+            next_engineers_objs = get_engineers_for_shift(next_date, next_shift_code)
+        else:
+            next_engineers_objs = get_engineers_for_shift(date, next_shift_code)
+        for member in current_engineers_objs:
+            shift.current_engineers.append(member)
+        for member in next_engineers_objs:
+            shift.next_engineers.append(member)
+        # Add incidents
+        def add_incident(field, inc_type):
+            vals = request.form.getlist(field)
+            for val in vals:
+                if val.strip():
+                    incident = Incident(title=val, status=inc_type if inc_type in ['Active','Closed'] else '', priority='High' if inc_type=='Priority' else '', handover=val if inc_type=='Handover' else '', shift_id=shift.id, type=inc_type)
+                    db.session.add(incident)
+        add_incident('open_incidents', 'Active')
+        add_incident('closed_incidents', 'Closed')
+        add_incident('priority_incidents', 'Priority')
+        add_incident('handover_incidents', 'Handover')
+        # Add key points
+        key_point_numbers = request.form.getlist('key_point_number')
+        key_point_details = request.form.getlist('key_point_details')
+        responsible_persons = request.form.getlist('responsible_person')
+        key_point_statuses = request.form.getlist('key_point_status')
+        for i in range(len(key_point_numbers)):
+            details = key_point_details[i].strip() if i < len(key_point_details) else ''
+            responsible_id = responsible_persons[i] if i < len(responsible_persons) else ''
+            status = key_point_statuses[i] if i < len(key_point_statuses) else 'Open'
+            if details:
+                kp = ShiftKeyPoint(
+                    description=details,
+                    status=status,
+                    responsible_engineer_id=int(responsible_id) if responsible_id else None,
+                    shift_id=shift.id
+                )
+                db.session.add(kp)
+        db.session.commit()
+        if action == 'send':
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logging.debug(f"[EMAIL] Attempting to send handover email for shift_id={shift.id}, date={shift.date}, current_shift_type={shift.current_shift_type}, next_shift_type={shift.next_shift_type}")
+            try:
+                send_handover_email(shift)
+                logging.debug(f"[EMAIL] Email sent successfully for shift_id={shift.id}")
+                flash('Handover submitted and email sent!')
+            except Exception as e:
+                logging.error(f"[EMAIL] Failed to send email for shift_id={shift.id}: {e}")
+                flash(f'Error sending email: {e}')
+        else:
+            flash('Draft saved.')
+        return redirect(url_for('reports.handover_reports'))
+    # GET: render form with defaults
+    # Determine current and next shift based on time
+    hour = ist_now.hour
+    minute = ist_now.minute
+    if dt_time(6,45) <= ist_now.time() < dt_time(14,45):
+        current_shift_type = 'Morning'
+        next_shift_type = 'Evening'
+    elif dt_time(14,45) <= ist_now.time() < dt_time(21,45):
+        current_shift_type = 'Evening'
+        next_shift_type = 'Night'
+    else:
+        current_shift_type = 'Night'
+        next_shift_type = 'Morning'
+    def get_engineers_for_shift(date, shift_code):
+        entries = ShiftRoster.query.filter_by(date=date, shift_code=shift_code).all()
+        member_ids = [e.team_member_id for e in entries]
+        return TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+    if current_shift_type == 'Night' and ist_now.time() < dt_time(6,45):
+        night_date = default_date - timedelta(days=1)
+        current_engineers_objs = get_engineers_for_shift(night_date, shift_map[current_shift_type])
+    else:
+        current_engineers_objs = get_engineers_for_shift(default_date, shift_map[current_shift_type])
+    if next_shift_type == 'Night' and ist_now.time() >= dt_time(21,45):
+        next_date = default_date + timedelta(days=1)
+        next_engineers_objs = get_engineers_for_shift(next_date, shift_map[next_shift_type])
+    else:
+        next_engineers_objs = get_engineers_for_shift(default_date, shift_map[next_shift_type])
+    current_engineers = [m.name for m in current_engineers_objs]
+    next_engineers = [m.name for m in next_engineers_objs]
+    # Carry forward all open/in-progress key points from all previous 'sent' shifts before today
+    prev_shifts = Shift.query.filter(Shift.date < default_date, Shift.status == 'sent').all()
+    open_key_points = []
+    for prev_shift in prev_shifts:
+        open_key_points.extend([
+            kp for kp in ShiftKeyPoint.query.filter_by(shift_id=prev_shift.id).all() if kp.status in ('Open', 'In Progress')
+        ])
+    # Always show at least one blank row for new key point entry in the form
+    return render_template('handover_form.html',
+        team_members=team_members,
+        current_engineers=current_engineers,
+        next_engineers=next_engineers,
+        current_shift_type=current_shift_type,
+        next_shift_type=next_shift_type,
+        open_key_points=open_key_points,
+        shift=None,
+        open_incidents=[],
+        closed_incidents=[],
+        priority_incidents=[],
+        handover_incidents=[],
+        today=default_date.strftime('%Y-%m-%d')
+    )
