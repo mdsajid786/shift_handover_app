@@ -9,7 +9,7 @@
             <select name="month" id="month" class="form-control">
                 <option value="">All</option>
                 {% for m in months %}
-                <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+                <option value="{{ m }}" {% if m == months[selected_month-1] %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
             </select>
         </div>

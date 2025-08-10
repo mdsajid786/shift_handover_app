@@ -13,8 +13,15 @@ roster_bp = Blueprint('roster', __name__)
 @login_required
 def roster():
     # Get filter values from query params
-    month = request.args.get('month', default=None, type=int)
+    import calendar
+    month_str = request.args.get('month')
     year = request.args.get('year', default=None, type=int)
+    month = None
+    if month_str:
+        try:
+            month = list(calendar.month_name).index(month_str)
+        except ValueError:
+            month = None
     filter_date = request.args.get('filter_date')
     filter_shift = request.args.get('filter_shift')
     query = db.session.query(ShiftRoster)
@@ -33,7 +40,6 @@ def roster():
         if member:
             roster_data[member.name][entry.date] = entry.shift_code
     # For dropdowns
-    import calendar
     months = [calendar.month_name[i] for i in range(1, 13)]
     years = sorted({d.date.year for d in db.session.query(ShiftRoster.date).distinct() if d.date})
 

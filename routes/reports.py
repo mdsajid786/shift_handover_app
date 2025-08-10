@@ -20,6 +20,7 @@ def handover_reports():
             pass
     if shift_type_filter:
         query = query.filter_by(current_shift_type=shift_type_filter)
+    # Show both sent and draft handovers
     shifts = query.order_by(Shift.date.desc()).all()
     shift_data = []
     for shift in shifts:

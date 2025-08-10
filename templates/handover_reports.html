@@ -19,27 +19,48 @@
         </div>
     </div>
 </form>
-{% for entry in shift_data %}
-    <div class="card mb-3">
-        <div class="card-header">
-            Date: {{ entry.shift.date }} | Shift: {{ entry.shift.current_shift_type }}
-        </div>
-        <div class="card-body">
-            <h5>Incidents</h5>
-            <ul>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Current Shift</th>
+            <th>Status</th>
+            <th>Incidents</th>
+            <th>Key Points</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for entry in shift_data %}
+        <tr>
+            <td>{{ entry.shift.date }}</td>
+            <td>{{ entry.shift.current_shift_type }}</td>
+            <td>{{ entry.shift.status|capitalize }}</td>
+            <td>
+                <ul>
                 {% for inc in entry.incidents %}
-                <li><b>{{ inc.type }}</b>: {{ inc.title }}</li>
+                    <li><b>{{ inc.type }}</b>: {{ inc.title }}</li>
                 {% endfor %}
-            </ul>
-            <h5>Key Points</h5>
-            <ul>
+                </ul>
+            </td>
+            <td>
+                <ul>
                 {% for kp in entry.key_points %}
-                <li>{{ kp.description }} ({{ kp.status }}, Responsible: {{ kp.responsible }})</li>
+                    <li>{{ kp.description }} ({{ kp.status }}, Responsible: {{ kp.responsible }})</li>
                 {% else %}
-                <li>No key points</li>
+                    <li>No key points</li>
                 {% endfor %}
-            </ul>
-        </div>
-    </div>
-{% endfor %}
+                </ul>
+            </td>
+            <td>
+                {% if entry.shift.status == 'draft' %}
+                <a href="{{ url_for('handover.edit_handover', shift_id=entry.shift.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                {% else %}
+                <span class="text-muted">Final</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
 {% endblock %}
