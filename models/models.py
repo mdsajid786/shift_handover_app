@@ -45,6 +45,7 @@ class ShiftKeyPoint(db.Model):
     status = db.Column(db.String(16), nullable=False) # Open/Closed
     responsible_engineer_id = db.Column(db.Integer, db.ForeignKey('team_member.id'))
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
+    jira_id = db.Column(db.String(64), nullable=True)  # New field for JIRA ID
 
 # Association tables
 current_shift_engineers = db.Table('current_shift_engineers',

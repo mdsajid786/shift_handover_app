@@ -91,13 +91,16 @@
             {% set kp_count = 1 %}
             {% for kp in open_key_points %}
             <div class="key-point-entry row mb-2">
-                <div class="col-2">
+                <div class="col-1">
                     <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="{{ loop.index }}" readonly>
                 </div>
-                <div class="col-4">
+                <div class="col-3">
                     <input type="text" name="key_point_details" class="form-control" placeholder="Details" value="{{ kp.description }}">
                 </div>
                 <div class="col-3">
+                    <input type="text" name="jira_id" class="form-control" placeholder="JIRA ID" value="{{ kp.jira_id }}">
+                </div>
+                <div class="col-2">
                     <select name="responsible_person" class="form-control">
                         <option value="">Responsible Person</option>
                         {% for member in team_members %}
@@ -116,13 +119,16 @@
             {% endfor %}
             <!-- Blank row for new key point entry -->
             <div class="key-point-entry row mb-2">
-                <div class="col-2">
+                <div class="col-1">
                     <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="{{ (open_key_points|length) + 1 }}" readonly>
                 </div>
-                <div class="col-4">
+                <div class="col-3">
                     <input type="text" name="key_point_details" class="form-control" placeholder="Details">
                 </div>
                 <div class="col-3">
+                    <input type="text" name="jira_id" class="form-control" placeholder="JIRA ID">
+                </div>
+                <div class="col-2">
                     <select name="responsible_person" class="form-control">
                         <option value="">Responsible Person</option>
                         {% for member in team_members %}
@@ -148,13 +154,16 @@
         const entry = document.createElement('div');
         entry.className = 'key-point-entry row mb-2';
         entry.innerHTML = `
-            <div class="col-2">
+            <div class="col-1">
                 <input type="number" name="key_point_number" class="form-control" placeholder="No." min="1" value="${count}" readonly>
             </div>
-            <div class="col-4">
+            <div class="col-3">
                 <input type="text" name="key_point_details" class="form-control" placeholder="Details">
             </div>
             <div class="col-3">
+                <input type="text" name="jira_id" class="form-control" placeholder="JIRA ID">
+            </div>
+            <div class="col-2">
                 <select name="responsible_person" class="form-control">
                     <option value="">Responsible Person</option>
                     {% for member in team_members %}
