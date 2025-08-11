@@ -1,58 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Dashboard</h2>
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Open Incidents</div>
-            <div class="card-body">
-                <ul>
-                    {% for incident in open_incidents %}
-                    <li>{{ incident.title }} ({{ incident.priority }})</li>
-                    {% else %}
-                    <li>No open incidents</li>
-                    {% endfor %}
-                </ul>
+<div class="container-fluid px-0">
+    <h2 class="mb-4">Dashboard</h2>
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">Open Incidents</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for incident in open_incidents %}
+                        <li class="list-group-item">{{ incident.title }} <span class="badge bg-warning text-dark ms-2">{{ incident.priority }}</span></li>
+                        {% else %}
+                        <li class="list-group-item">No open incidents</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Current Shift Engineers</div>
-            <div class="card-body">
-                <ul>
-                    {% for engineer in current_engineers %}
-                    <li>{{ engineer.name }}</li>
-                    {% else %}
-                    <li>No current shift engineers</li>
-                    {% endfor %}
-                </ul>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-info text-white">Current Shift Engineers</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for engineer in current_engineers %}
+                        <li class="list-group-item">{{ engineer.name }}</li>
+                        {% else %}
+                        <li class="list-group-item">No current shift engineers</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Next Shift Engineers</div>
-            <div class="card-body">
-                <ul>
-                    {% for engineer in next_engineers %}
-                    <li>{{ engineer.name }}</li>
-                    {% else %}
-                    <li>No next shift engineers</li>
-                    {% endfor %}
-                </ul>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">Next Shift Engineers</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for engineer in next_shift_engineers %}
+                        <li class="list-group-item">{{ engineer.name }}</li>
+                        {% else %}
+                        <li class="list-group-item">No next shift engineers</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-header">Open Key Points</div>
-            <div class="card-body">
-                <ul>
-                    {% for kp in open_key_points %}
-                    <li>{{ kp.description }}</li>
-                    {% else %}
-                    <li>No open key points</li>
-                    {% endfor %}
-                </ul>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-secondary text-white">Open Key Points</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for kp in open_key_points %}
+                        <li class="list-group-item">{{ kp.description }}</li>
+                        {% else %}
+                        <li class="list-group-item">No open key points</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

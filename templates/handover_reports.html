@@ -1,66 +1,78 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Shift Handover Reports</h2>
-<form method="get" class="mb-3">
-    <div class="row">
-        <div class="col-md-3">
-            <input type="date" name="date" class="form-control" value="{{ date_filter }}">
-        </div>
-        <div class="col-md-3">
-            <select name="shift_type" class="form-control">
-                <option value="">All Shifts</option>
-                <option value="Morning" {% if shift_type_filter=='Morning' %}selected{% endif %}>Morning</option>
-                <option value="Evening" {% if shift_type_filter=='Evening' %}selected{% endif %}>Evening</option>
-                <option value="Night" {% if shift_type_filter=='Night' %}selected{% endif %}>Night</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary">Filter</button>
+<div class="container-fluid px-0">
+    <div class="card shadow-sm p-4 mb-4">
+        <h2 class="mb-4">Shift Handover Reports</h2>
+        <form method="get" class="mb-4">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="shift_type" class="form-select">
+                        <option value="">All Shifts</option>
+                        <option value="Morning" {% if shift_type_filter=='Morning' %}selected{% endif %}>Morning</option>
+                        <option value="Evening" {% if shift_type_filter=='Evening' %}selected{% endif %}>Evening</option>
+                        <option value="Night" {% if shift_type_filter=='Night' %}selected{% endif %}>Night</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Current Shift</th>
+                        <th>Status</th>
+                        <th>Incidents</th>
+                        <th>Key Points</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for entry in shift_data %}
+                    <tr>
+                        <td>{{ entry.shift.date }}</td>
+                        <td>{{ entry.shift.current_shift_type }}</td>
+                        <td>
+                            {% if entry.shift.status == 'draft' %}
+                                <span class="badge bg-warning text-dark">Draft</span>
+                            {% else %}
+                                <span class="badge bg-success">Sent</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <ul class="list-group list-group-flush">
+                            {% for inc in entry.incidents %}
+                                <li class="list-group-item"><b>{{ inc.type }}</b>: {{ inc.title }}</li>
+                            {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="list-group list-group-flush">
+                            {% for kp in entry.key_points %}
+                                <li class="list-group-item">{{ kp.description }} <span class="badge bg-secondary ms-2">{{ kp.status }}</span> <span class="text-muted small">Responsible: {{ kp.responsible }}</span></li>
+                            {% else %}
+                                <li class="list-group-item">No key points</li>
+                            {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            {% if entry.shift.status == 'draft' %}
+                            <a href="{{ url_for('handover.edit_handover', shift_id=entry.shift.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                            {% else %}
+                            <span class="text-muted">Final</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-</form>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Current Shift</th>
-            <th>Status</th>
-            <th>Incidents</th>
-            <th>Key Points</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for entry in shift_data %}
-        <tr>
-            <td>{{ entry.shift.date }}</td>
-            <td>{{ entry.shift.current_shift_type }}</td>
-            <td>{{ entry.shift.status|capitalize }}</td>
-            <td>
-                <ul>
-                {% for inc in entry.incidents %}
-                    <li><b>{{ inc.type }}</b>: {{ inc.title }}</li>
-                {% endfor %}
-                </ul>
-            </td>
-            <td>
-                <ul>
-                {% for kp in entry.key_points %}
-                    <li>{{ kp.description }} ({{ kp.status }}, Responsible: {{ kp.responsible }})</li>
-                {% else %}
-                    <li>No key points</li>
-                {% endfor %}
-                </ul>
-            </td>
-            <td>
-                {% if entry.shift.status == 'draft' %}
-                <a href="{{ url_for('handover.edit_handover', shift_id=entry.shift.id) }}" class="btn btn-primary btn-sm">Edit</a>
-                {% else %}
-                <span class="text-muted">Final</span>
-                {% endif %}
-            </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+</div>
 {% endblock %}

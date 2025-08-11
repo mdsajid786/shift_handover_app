@@ -1,63 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Shift Handover Form</h2>
-<form method="POST">
-    <div class="mb-3">
-        <label for="date" class="form-label">Date</label>
-    <input type="date" class="form-control" id="date" name="date" required value="{{ shift.date|default(today, true) }}">
-    </div>
-    <div class="mb-3">
-        <label for="current_shift_type" class="form-label">Current Shift</label>
-        <select class="form-control" id="current_shift_type" name="current_shift_type" required>
-            <option value="">Select</option>
-            <option value="Morning" {% if current_shift_type=='Morning' %}selected{% endif %}>Morning</option>
-            <option value="Evening" {% if current_shift_type=='Evening' %}selected{% endif %}>Evening</option>
-            <option value="Night" {% if current_shift_type=='Night' %}selected{% endif %}>Night</option>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label for="next_shift_type" class="form-label">Next Shift</label>
-        <select class="form-control" id="next_shift_type" name="next_shift_type" required>
-            <option value="">Select</option>
-            <option value="Morning" {% if next_shift_type=='Morning' %}selected{% endif %}>Morning</option>
-            <option value="Evening" {% if next_shift_type=='Evening' %}selected{% endif %}>Evening</option>
-            <option value="Night" {% if next_shift_type=='Night' %}selected{% endif %}>Night</option>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label for="current_engineers" class="form-label">Current Shift Engineers</label>
-        <input type="text" class="form-control" id="current_engineers" name="current_engineers" value="{{ current_engineers|join(', ') }}" readonly>
-    </div>
-    <div class="mb-3">
-        <label for="next_engineers" class="form-label">Next Shift Engineers</label>
-        <input type="text" class="form-control" id="next_engineers" name="next_engineers" value="{{ next_engineers|join(', ') }}" readonly>
-    </div>
-    <!-- Open Incidents Section -->
-    <div class="mb-3">
-        <label>Open Incidents</label>
-        <div id="open_incidents">
-            {% if open_incidents %}
-                {% for incident in open_incidents %}
-                    <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details" value="{{ incident }}">
-                {% endfor %}
-            {% else %}
-                <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details">
-            {% endif %}
-        </div>
-    </div>
-    <!-- Closed Incidents Section -->
-    <div class="mb-3">
-        <label>Closed Incidents</label>
-        <div id="closed_incidents">
-            {% if closed_incidents %}
-                {% for incident in closed_incidents %}
-                    <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details" value="{{ incident }}">
-                {% endfor %}
-            {% else %}
-                <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details">
-            {% endif %}
-        </div>
-    </div>
+<div class="container-fluid px-0">
+    <div class="card shadow-sm p-4 mb-4">
+        <h2 class="mb-4">Shift Handover Form</h2>
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required value="{{ shift.date|default(today, true) }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="current_shift_type" class="form-label">Current Shift</label>
+                    <select class="form-select" id="current_shift_type" name="current_shift_type" required>
+                        <option value="">Select</option>
+                        <option value="Morning" {% if current_shift_type=='Morning' %}selected{% endif %}>Morning</option>
+                        <option value="Evening" {% if current_shift_type=='Evening' %}selected{% endif %}>Evening</option>
+                        <option value="Night" {% if current_shift_type=='Night' %}selected{% endif %}>Night</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="next_shift_type" class="form-label">Next Shift</label>
+                    <select class="form-select" id="next_shift_type" name="next_shift_type" required>
+                        <option value="">Select</option>
+                        <option value="Morning" {% if next_shift_type=='Morning' %}selected{% endif %}>Morning</option>
+                        <option value="Evening" {% if next_shift_type=='Evening' %}selected{% endif %}>Evening</option>
+                        <option value="Night" {% if next_shift_type=='Night' %}selected{% endif %}>Night</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                    <label for="current_engineers" class="form-label">Current Shift Engineers</label>
+                    <input type="text" class="form-control" id="current_engineers" name="current_engineers" value="{{ current_engineers|join(', ') }}" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label for="next_engineers" class="form-label">Next Shift Engineers</label>
+                    <input type="text" class="form-control" id="next_engineers" name="next_engineers" value="{{ next_engineers|join(', ') }}" readonly>
+                </div>
+            </div>
+            <hr class="my-4">
+            <!-- Open Incidents Section -->
+            <div class="mb-3">
+                <label class="form-label">Open Incidents</label>
+                <div id="open_incidents">
+                    {% if open_incidents %}
+                        {% for incident in open_incidents %}
+                            <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details" value="{{ incident }}">
+                        {% endfor %}
+                    {% else %}
+                        <input type="text" name="open_incidents" class="form-control mb-2" placeholder="Open incident details">
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Closed Incidents Section -->
+            <div class="mb-3">
+                <label class="form-label">Closed Incidents</label>
+                <div id="closed_incidents">
+                    {% if closed_incidents %}
+                        {% for incident in closed_incidents %}
+                            <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details" value="{{ incident }}">
+                        {% endfor %}
+                    {% else %}
+                        <input type="text" name="closed_incidents" class="form-control mb-2" placeholder="Closed incident details">
+                    {% endif %}
+                </div>
+            </div>
     <!-- Priority Incidents Section -->
     <div class="mb-3">
         <label>Priority Incidents</label>
