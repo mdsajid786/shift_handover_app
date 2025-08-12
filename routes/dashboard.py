@@ -43,6 +43,16 @@ def dashboard():
     # Remove single_date, only support custom range and standard options
     ist_now = get_ist_now()
     today = ist_now.date()
+    # Next shift engineers: always use tomorrow's date for next shift
+    shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
+    current_shift_type, next_shift_type = get_shift_type_and_next(ist_now)
+    current_shift_code = shift_map[current_shift_type]
+    next_shift_code = shift_map[next_shift_type]
+    next_date = today + timedelta(days=1)
+    next_engineers = get_engineers_for_shift(next_date, next_shift_code)
+    # Debug logging for next shift engineers
+    print(f"[DEBUG] Dashboard: today={today}, next_date={next_date}, next_shift_type={next_shift_type}, next_shift_code={next_shift_code}")
+    print(f"[DEBUG] Dashboard: next_engineers={[e.name for e in next_engineers]}")
     if range_opt == '1d':
         from_date = today - timedelta(days=1)
         to_date = today
@@ -99,12 +109,9 @@ def dashboard():
         current_engineers = get_engineers_for_shift(night_date, current_shift_code)
     else:
         current_engineers = get_engineers_for_shift(today, current_shift_code)
-    # Next shift engineers
-    if next_shift_type == 'Night' and ist_now.time() >= dt_time(21,45):
-        next_date = today + timedelta(days=1)
-        next_engineers = get_engineers_for_shift(next_date, next_shift_code)
-    else:
-        next_engineers = get_engineers_for_shift(today, next_shift_code)
+    # Next shift engineers: always use tomorrow's date for next shift
+    next_date = today + timedelta(days=1)
+    next_engineers = get_engineers_for_shift(next_date, next_shift_code)
 
     # Date-wise chart data
     date_list = [(from_date + timedelta(days=i)) for i in range((to_date - from_date).days + 1)]
@@ -138,7 +145,7 @@ def dashboard():
         'dashboard.html',
         open_incidents=open_incidents,
         current_engineers=current_engineers,
-        next_engineers=next_engineers,
+        next_shift_engineers=next_engineers,
         graphJSON=graphJSON,
         open_key_points=open_key_points,
         selected_range=range_opt,

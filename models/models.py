@@ -1,12 +1,13 @@
+
+from app import db
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+
 # Escalation Matrix File model for persistent uploads
 class EscalationMatrixFile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(256), nullable=False)
     upload_time = db.Column(db.DateTime, nullable=False)
-
-from app import db
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 
 class ShiftRoster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
