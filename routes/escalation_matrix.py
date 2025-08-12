@@ -30,5 +30,7 @@ def escalation_matrix():
         xls = pd.ExcelFile(os.path.join(UPLOAD_FOLDER, latest_file))
         app_names = xls.sheet_names
         if selected_app and selected_app in app_names:
-            matrix_data = xls.parse(selected_app).to_dict(orient='records')
+            df = xls.parse(selected_app)
+            # Replace NaN/None with empty string for display
+            matrix_data = df.where(pd.notnull(df), '').to_dict(orient='records')
     return render_template('escalation_matrix.html', app_names=app_names, matrix_data=matrix_data, selected_app=selected_app)
