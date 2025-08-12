@@ -80,15 +80,15 @@ def dashboard():
     priority_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
     priority_count = priority_count.filter(Incident.type=='Priority', Shift.date >= from_date, Shift.date <= to_date).count()
 
-    # For widget display (current day)
-    # Deduplicate open incidents by title (show only latest per title)
-    inc_subq = db.session.query(
-        Incident.title,
-        db.func.max(Incident.id).label('max_id')
-    ).filter(Incident.status=='Active', Incident.type=='Active', Shift.date==today).group_by(Incident.title).subquery()
-    open_incidents = db.session.query(Incident).join(
-        inc_subq, Incident.id == inc_subq.c.max_id
-    ).all()
+    # Show only open incidents from the most recent handover form (latest shift)
+    latest_shift = db.session.query(Shift).order_by(Shift.date.desc(), Shift.id.desc()).first()
+    open_incidents = []
+    if latest_shift:
+        open_incidents = db.session.query(Incident).filter(
+            Incident.shift_id == latest_shift.id,
+            Incident.status == 'Active',
+            Incident.type == 'Active'
+        ).all()
 
     # Deduplicate open key points by description and jira_id (show only latest per pair), only non-Closed
     kp_subq = db.session.query(

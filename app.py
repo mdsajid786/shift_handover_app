@@ -26,6 +26,7 @@ from routes.roster_upload import roster_upload_bp
 from routes.reports import reports_bp
 
 
+
 # Register blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(handover_bp)
@@ -41,6 +42,10 @@ app.register_blueprint(escalation_bp)
 # Register user management blueprint
 from routes.user_management import user_mgmt_bp
 app.register_blueprint(user_mgmt_bp)
+
+# Register keypoints updates blueprint
+from routes.keypoints import keypoints_bp
+app.register_blueprint(keypoints_bp)
 
 @login_manager.user_loader
 def load_user(user_id):

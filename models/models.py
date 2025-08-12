@@ -46,13 +46,23 @@ class Incident(db.Model):
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
     type = db.Column(db.String(32), nullable=False) # Active, Closed, Priority, Handover
 
+
 class ShiftKeyPoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(16), nullable=False) # Open/Closed
+    status = db.Column(db.String(16), nullable=False) # Open/Closed/In Progress
     responsible_engineer_id = db.Column(db.Integer, db.ForeignKey('team_member.id'))
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
     jira_id = db.Column(db.String(64), nullable=True)  # New field for JIRA ID
+    updates = db.relationship('ShiftKeyPointUpdate', backref='key_point', lazy=True)
+
+# Daily updates for key points
+class ShiftKeyPointUpdate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key_point_id = db.Column(db.Integer, db.ForeignKey('shift_key_point.id'), nullable=False)
+    update_text = db.Column(db.Text, nullable=False)
+    update_date = db.Column(db.Date, nullable=False)
+    updated_by = db.Column(db.String(64), nullable=False)
 
 # Association tables
 current_shift_engineers = db.Table('current_shift_engineers',
