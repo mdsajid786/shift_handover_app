@@ -67,7 +67,7 @@
             </nav>
             <main class="col-md-10 ms-sm-auto px-4">
                 <div class="pt-4">
-                    <!-- Main content will be injected here by child template -->
+                    {% block content %}{% endblock %}
                 </div>
             </main>
         </div>
@@ -76,7 +76,9 @@
     <div class="d-flex align-items-center justify-content-center vh-100" style="background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);">
         <div class="card shadow-lg p-4" style="min-width: 350px; max-width: 400px; width: 100%; border-radius: 1rem;">
             <div class="card-body">
-                {% block content %}{% endblock %}
+                {% if not show_sidebar %}
+                    {{ self.content() }}
+                {% endif %}
             </div>
         </div>
     </div>
