@@ -25,6 +25,7 @@ from routes.team import team_bp
 from routes.roster_upload import roster_upload_bp
 from routes.reports import reports_bp
 
+
 # Register blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(handover_bp)
@@ -33,6 +34,8 @@ app.register_blueprint(roster_bp)
 app.register_blueprint(team_bp)
 app.register_blueprint(roster_upload_bp)
 app.register_blueprint(reports_bp)
+from routes.escalation_matrix import escalation_bp
+app.register_blueprint(escalation_bp)
 
 @login_manager.user_loader
 def load_user(user_id):

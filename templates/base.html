@@ -23,11 +23,13 @@
             font-weight: bold;
         }
     </style>
+    {% block head %}{% endblock %}
 </head>
 <body>
-{% if not (request.endpoint == 'auth.login' or request.endpoint == 'login') %}
+{% set show_sidebar = not (request.endpoint == 'auth.login' or request.endpoint == 'login') %}
 <div class="container-fluid">
     <div class="row">
+        {% if show_sidebar %}
         <nav class="col-md-2 d-none d-md-block sidebar p-0">
             <div class="position-sticky">
                 <ul class="nav flex-column py-3">
@@ -36,18 +38,17 @@
                     <li class="nav-item"><a class="nav-link" href="/roster">Shift Roster</a></li>
                     <li class="nav-item"><a class="nav-link" href="/team">Team Details</a></li>
                     <li class="nav-item"><a class="nav-link" href="/handover-reports">Shift Handover Reports</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/escalation-matrix">Escalation Matrix</a></li>
                 </ul>
             </div>
         </nav>
-        <main class="col-md-10 ms-sm-auto px-4">
+        {% endif %}
+        <main class="{% if show_sidebar %}col-md-10 ms-sm-auto px-4{% else %}col-12 px-0{% endif %}">
             <div class="pt-4">
                 {% block content %}{% endblock %}
             </div>
         </main>
     </div>
 </div>
-{% else %}
-    {% block content %}{% endblock %}
-{% endif %}
 </body>
 </html>
