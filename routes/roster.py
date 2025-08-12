@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 from models.models import TeamMember, ShiftRoster
 from app import db
 from datetime import datetime
@@ -9,9 +9,12 @@ roster_bp = Blueprint('roster', __name__)
 
 
 # Shift Roster View with Month/Year filters
-@roster_bp.route('/roster', methods=['GET'])
+@roster_bp.route('/roster', methods=['GET', 'POST'])
 @login_required
 def roster():
+    if request.method == 'POST' and current_user.role == 'viewer':
+        flash('You do not have permission to edit shift roster.')
+        return redirect(url_for('roster.roster'))
     # Get filter values from query params
     import calendar
     month_str = request.args.get('month')

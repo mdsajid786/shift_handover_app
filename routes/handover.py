@@ -44,6 +44,9 @@ def handover_drafts():
 @handover_bp.route('/handover/edit/<int:shift_id>', methods=['GET', 'POST'])
 @login_required
 def edit_handover(shift_id):
+    if current_user.role == 'viewer':
+        flash('You do not have permission to edit handover forms.')
+        return redirect(url_for('dashboard.dashboard'))
     shift = Shift.query.get_or_404(shift_id)
     team_members = TeamMember.query.all()
     # Fetch incidents by type for prepopulation

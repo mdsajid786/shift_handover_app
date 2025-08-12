@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models.models import TeamMember
 from app import db
 
@@ -10,6 +10,9 @@ team_bp = Blueprint('team', __name__)
 @team_bp.route('/team', methods=['GET', 'POST'])
 @login_required
 def team():
+    if request.method == 'POST' and current_user.role == 'viewer':
+        flash('You do not have permission to edit team details.')
+        return redirect(url_for('team.team'))
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'add':

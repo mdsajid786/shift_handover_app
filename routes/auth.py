@@ -9,14 +9,8 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # Static credentials
-        if username == 'admin' and password == 'admin':
-            user = User.query.filter_by(username='admin').first()
-            if not user:
-                user = User(username='admin', password='admin')
-                from app import db
-                db.session.add(user)
-                db.session.commit()
+        user = User.query.filter_by(username=username).first()
+        if user and user.password == password:
             login_user(user)
             return redirect(url_for('dashboard.dashboard'))
         else:

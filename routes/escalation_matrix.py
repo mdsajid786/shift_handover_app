@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 import os
 import pandas as pd
 
@@ -15,6 +15,9 @@ def escalation_matrix():
     matrix_data = None
     selected_app = request.args.get('application')
     if request.method == 'POST':
+        if current_user.role == 'viewer':
+            flash('You do not have permission to upload escalation matrix.')
+            return redirect(url_for('escalation_matrix.escalation_matrix'))
         file = request.files.get('file')
         if file and file.filename.endswith('.xlsx'):
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
