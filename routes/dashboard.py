@@ -1,6 +1,7 @@
+
 from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
-from models.models import Incident, TeamMember, ShiftRoster, ShiftKeyPoint, Shift
+from models.models import Incident, TeamMember, ShiftRoster, ShiftKeyPoint, Shift, Account, Team, User
 from app import db
 import plotly.graph_objs as go
 import plotly
@@ -42,22 +43,64 @@ def get_engineers_for_shift(date, shift_code):
 @dashboard_bp.route('/')
 @login_required
 def dashboard():
-    # Date range filter
-    range_opt = request.args.get('range', '7d')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    # Remove single_date, only support custom range and standard options
     ist_now = get_ist_now()
     today = ist_now.date()
-    # Next shift engineers: always use tomorrow's date for next shift
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
     current_shift_type, next_shift_type = get_shift_type_and_next(ist_now)
     current_shift_code = shift_map[current_shift_type]
     next_shift_code = shift_map[next_shift_type]
     next_date = today + timedelta(days=1)
-    next_engineers = get_engineers_for_shift(next_date, next_shift_code)
-    # Debug logging for next shift engineers
-    print(f"[DEBUG] Dashboard: today={today}, next_date={next_date}, next_shift_type={next_shift_type}, next_shift_code={next_shift_code}")
+
+    # Role-based filtering
+    accounts = Account.query.all() if current_user.role in ['super_admin', 'account_admin'] else []
+    teams = []
+    selected_account_id = request.args.get('account_id', type=int)
+    selected_team_id = request.args.get('team_id', type=int)
+
+    # Super Admin: can select any account/team
+    if current_user.role == 'super_admin':
+        if selected_account_id:
+            teams = Team.query.filter_by(account_id=selected_account_id).all()
+        if not selected_account_id and accounts:
+            selected_account_id = accounts[0].id
+            teams = Team.query.filter_by(account_id=selected_account_id).all()
+        if not selected_team_id and teams:
+            selected_team_id = teams[0].id
+        filter_account_id = selected_account_id
+        filter_team_id = selected_team_id
+    # Account Admin: can select any team in their account
+    elif current_user.role == 'account_admin':
+        filter_account_id = current_user.account_id
+        teams = Team.query.filter_by(account_id=filter_account_id).all()
+        if not selected_team_id and teams:
+            selected_team_id = teams[0].id
+        filter_team_id = selected_team_id
+    # Team Admin/User: only their own team
+    else:
+        filter_account_id = current_user.account_id
+        filter_team_id = current_user.team_id
+
+    # Filter data by account/team
+    open_incidents = Incident.query.filter_by(account_id=filter_account_id, team_id=filter_team_id, status='Active').all()
+    current_engineers = get_engineers_for_shift(today, current_shift_code)
+    next_shift_engineers = get_engineers_for_shift(next_date, next_shift_code)
+    open_key_points = ShiftKeyPoint.query.filter_by(account_id=filter_account_id, team_id=filter_team_id, status='Open').all()
+
+    return render_template(
+        'dashboard.html',
+        accounts=accounts,
+        teams=teams,
+        selected_account_id=filter_account_id,
+        selected_team_id=filter_team_id,
+        open_incidents=open_incidents,
+        current_engineers=current_engineers,
+        next_shift_engineers=next_shift_engineers,
+        open_key_points=open_key_points,
+        current_shift_type=current_shift_type,
+        next_shift_type=next_shift_type,
+        today=today,
+        next_date=next_date
+    )
     print(f"[DEBUG] Dashboard: next_engineers={[e.name for e in next_engineers]}")
     if range_opt == '1d':
         from_date = today - timedelta(days=1)

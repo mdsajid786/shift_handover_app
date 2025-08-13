@@ -1,7 +1,9 @@
 from flask import Flask
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_migrate import Migrate
 from config import Config
 import os
 
@@ -9,10 +11,12 @@ import os
 app = Flask(__name__)
 app.config.from_object(Config)
 
+
 # Initialize extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
+migrate = Migrate(app, db)
 
 # Import blueprints
 
@@ -35,6 +39,8 @@ app.register_blueprint(roster_bp)
 app.register_blueprint(team_bp)
 app.register_blueprint(roster_upload_bp)
 app.register_blueprint(reports_bp)
+from routes.admin import admin_bp
+app.register_blueprint(admin_bp, url_prefix='/admin')
 
 from routes.escalation_matrix import escalation_bp
 app.register_blueprint(escalation_bp)

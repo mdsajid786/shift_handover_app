@@ -7,7 +7,7 @@ from alembic import op
 import sqlalchemy as sa
 
 def upgrade():
-    op.add_column('shift_key_point', sa.Column('jira_id', sa.String(length=64), nullable=True))
+    op.add_column('shift_key_point', sa.Column('jira_id', sa.String(length=255), nullable=True))
 
 def downgrade():
     op.drop_column('shift_key_point', 'jira_id')

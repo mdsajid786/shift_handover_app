@@ -9,3 +9,4 @@ plotly
 reportlab
 cryptography
 openpyxl
+Flask-Migrate

@@ -1,4 +1,8 @@
 
+from app import db
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+
 # Multi-account and multi-team support
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -12,10 +16,6 @@ class Team(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     members = db.relationship('TeamMember', backref='team', lazy=True)
     users = db.relationship('User', backref='team', lazy=True)
-
-from app import db
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 
 # Escalation Matrix File model for persistent uploads
 class EscalationMatrixFile(db.Model):
@@ -34,13 +34,15 @@ class ShiftRoster(db.Model):
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(16), nullable=False, default='viewer')  # 'admin' or 'viewer'
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(32), nullable=False, default='user')  # 'super_admin', 'account_admin', 'team_admin', 'user'
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
 
 class TeamMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     name = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     contact_number = db.Column(db.String(32), nullable=False)
