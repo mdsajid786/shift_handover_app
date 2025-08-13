@@ -33,12 +33,17 @@ def roster():
     filter_date = request.args.get('filter_date')
     filter_shift = request.args.get('filter_shift')
     query = db.session.query(ShiftRoster)
+    if current_user.role != 'admin':
+        query = query.filter(ShiftRoster.account_id==current_user.account_id, ShiftRoster.team_id==current_user.team_id)
     if month:
         query = query.filter(db.extract('month', ShiftRoster.date) == month)
     if year:
         query = query.filter(db.extract('year', ShiftRoster.date) == year)
     roster_entries = query.order_by(ShiftRoster.date).all()
-    all_members = TeamMember.query.all()
+    tm_query = TeamMember.query
+    if current_user.role != 'admin':
+        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    all_members = tm_query.all()
     # Build a set of all dates in the filtered result
     all_dates = sorted({entry.date for entry in roster_entries})
     # Build roster data: {member_name: {date: shift_code}}

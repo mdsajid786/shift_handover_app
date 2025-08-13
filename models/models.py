@@ -1,4 +1,18 @@
 
+# Multi-account and multi-team support
+class Account(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), unique=True, nullable=False)
+    teams = db.relationship('Team', backref='account', lazy=True)
+    users = db.relationship('User', backref='account', lazy=True)
+
+class Team(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    members = db.relationship('TeamMember', backref='team', lazy=True)
+    users = db.relationship('User', backref='team', lazy=True)
+
 from app import db
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -14,12 +28,16 @@ class ShiftRoster(db.Model):
     date = db.Column(db.Date, nullable=False)
     team_member_id = db.Column(db.Integer, db.ForeignKey('team_member.id'), nullable=False)
     shift_code = db.Column(db.String(8), nullable=True)  # E, D, N, G, LE, VL, HL, CO, or blank
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(16), nullable=False, default='viewer')  # 'admin' or 'viewer'
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
 
 class TeamMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -27,6 +45,8 @@ class TeamMember(db.Model):
     email = db.Column(db.String(120), nullable=False)
     contact_number = db.Column(db.String(32), nullable=False)
     role = db.Column(db.String(64))
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
 
 class Shift(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -36,6 +56,8 @@ class Shift(db.Model):
     current_engineers = db.relationship('TeamMember', secondary='current_shift_engineers')
     next_engineers = db.relationship('TeamMember', secondary='next_shift_engineers')
     status = db.Column(db.String(16), nullable=False, default='draft')  # draft or sent
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
 
 class Incident(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,6 +67,8 @@ class Incident(db.Model):
     handover = db.Column(db.Text)
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
     type = db.Column(db.String(32), nullable=False) # Active, Closed, Priority, Handover
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
 
 
 class ShiftKeyPoint(db.Model):
@@ -55,6 +79,8 @@ class ShiftKeyPoint(db.Model):
     shift_id = db.Column(db.Integer, db.ForeignKey('shift.id'))
     jira_id = db.Column(db.String(64), nullable=True)  # New field for JIRA ID
     updates = db.relationship('ShiftKeyPointUpdate', backref='key_point', lazy=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
 
 # Daily updates for key points
 class ShiftKeyPointUpdate(db.Model):

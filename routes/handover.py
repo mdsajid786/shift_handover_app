@@ -29,16 +29,25 @@ def get_engineers():
     ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
     if shift_type == 'Night' and ist_now.time() < dt_time(6,45):
         date = date - timedelta(days=1)
-    entries = ShiftRoster.query.filter_by(date=date, shift_code=shift_code).all()
+    query = ShiftRoster.query.filter_by(date=date, shift_code=shift_code)
+    if current_user.role != 'admin':
+        query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    entries = query.all()
     member_ids = [e.team_member_id for e in entries]
-    engineers = TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+    tm_query = TeamMember.query.filter(TeamMember.id.in_(member_ids))
+    if current_user.role != 'admin':
+        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    engineers = tm_query.all() if member_ids else []
     return jsonify({'engineers': [e.name for e in engineers]})
 
 @handover_bp.route('/handover/drafts')
 @login_required
 def handover_drafts():
     # Show all drafts (no created_by field in Shift model)
-    drafts = Shift.query.filter_by(status='draft').all()
+    query = Shift.query.filter_by(status='draft')
+    if current_user.role != 'admin':
+        query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    drafts = query.all()
     return render_template('handover_drafts.html', drafts=drafts)
 
 @handover_bp.route('/handover/edit/<int:shift_id>', methods=['GET', 'POST'])
@@ -48,7 +57,13 @@ def edit_handover(shift_id):
         flash('You do not have permission to edit handover forms.')
         return redirect(url_for('dashboard.dashboard'))
     shift = Shift.query.get_or_404(shift_id)
-    team_members = TeamMember.query.all()
+    if current_user.role != 'admin' and (shift.account_id != current_user.account_id or shift.team_id != current_user.team_id):
+        flash('You do not have permission to edit this handover form.')
+        return redirect(url_for('dashboard.dashboard'))
+    tm_query = TeamMember.query
+    if current_user.role != 'admin':
+        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    team_members = tm_query.all()
     # Fetch incidents by type for prepopulation
     open_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Active').all()]
     closed_incidents = [i.title for i in Incident.query.filter_by(shift_id=shift.id, type='Closed').all()]

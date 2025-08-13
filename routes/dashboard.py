@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models.models import Incident, TeamMember, ShiftRoster, ShiftKeyPoint, Shift
 from app import db
 import plotly.graph_objs as go
@@ -29,9 +29,15 @@ def get_shift_type_and_next(now):
 
 def get_engineers_for_shift(date, shift_code):
     # shift_code: 'E' (Evening), 'D' (Day/Morning), 'N' (Night)
-    entries = ShiftRoster.query.filter_by(date=date, shift_code=shift_code).all()
+    query = ShiftRoster.query.filter_by(date=date, shift_code=shift_code)
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    entries = query.all()
     member_ids = [e.team_member_id for e in entries]
-    return TeamMember.query.filter(TeamMember.id.in_(member_ids)).all() if member_ids else []
+    tm_query = TeamMember.query.filter(TeamMember.id.in_(member_ids))
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    return tm_query.all() if member_ids else []
 
 @dashboard_bp.route('/')
 @login_required
@@ -73,32 +79,44 @@ def dashboard():
         to_date = today
 
     # Summary counts for chart
-    open_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
-    open_count = open_count.filter(Incident.status=='Active', Incident.type=='Active', Shift.date >= from_date, Shift.date <= to_date).count()
-    closed_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
-    closed_count = closed_count.filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date >= from_date, Shift.date <= to_date).count()
-    priority_count = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
-    priority_count = priority_count.filter(Incident.type=='Priority', Shift.date >= from_date, Shift.date <= to_date).count()
+    base_incident_query = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
+    if current_user.role != 'admin':
+        base_incident_query = base_incident_query.filter(Incident.account_id==current_user.account_id, Incident.team_id==current_user.team_id)
+    open_count = base_incident_query.filter(Incident.status=='Active', Incident.type=='Active', Shift.date >= from_date, Shift.date <= to_date).count()
+    closed_count = base_incident_query.filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date >= from_date, Shift.date <= to_date).count()
+    priority_count = base_incident_query.filter(Incident.type=='Priority', Shift.date >= from_date, Shift.date <= to_date).count()
 
     # Show only open incidents from the most recent handover form (latest shift)
-    latest_shift = db.session.query(Shift).order_by(Shift.date.desc(), Shift.id.desc()).first()
+    shift_query = db.session.query(Shift)
+    if current_user.role != 'admin':
+        shift_query = shift_query.filter(Shift.account_id==current_user.account_id, Shift.team_id==current_user.team_id)
+    latest_shift = shift_query.order_by(Shift.date.desc(), Shift.id.desc()).first()
     open_incidents = []
     if latest_shift:
-        open_incidents = db.session.query(Incident).filter(
+        inc_query = db.session.query(Incident).filter(
             Incident.shift_id == latest_shift.id,
             Incident.status == 'Active',
             Incident.type == 'Active'
-        ).all()
+        )
+        if current_user.role != 'admin':
+            inc_query = inc_query.filter(Incident.account_id==current_user.account_id, Incident.team_id==current_user.team_id)
+        open_incidents = inc_query.all()
 
     # Deduplicate open key points by description and jira_id (show only latest per pair), only non-Closed
-    kp_subq = db.session.query(
+    kp_query = db.session.query(
         ShiftKeyPoint.description,
         ShiftKeyPoint.jira_id,
         db.func.max(ShiftKeyPoint.id).label('max_id')
-    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress'])).group_by(ShiftKeyPoint.description, ShiftKeyPoint.jira_id).subquery()
-    open_key_points = db.session.query(ShiftKeyPoint).join(
+    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress']))
+    if current_user.role != 'admin':
+        kp_query = kp_query.filter(ShiftKeyPoint.account_id==current_user.account_id, ShiftKeyPoint.team_id==current_user.team_id)
+    kp_subq = kp_query.group_by(ShiftKeyPoint.description, ShiftKeyPoint.jira_id).subquery()
+    open_key_points_query = db.session.query(ShiftKeyPoint).join(
         kp_subq, ShiftKeyPoint.id == kp_subq.c.max_id
-    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress'])).all()
+    ).filter(ShiftKeyPoint.status.in_(['Open', 'In Progress']))
+    if current_user.role != 'admin':
+        open_key_points_query = open_key_points_query.filter(ShiftKeyPoint.account_id==current_user.account_id, ShiftKeyPoint.team_id==current_user.team_id)
+    open_key_points = open_key_points_query.all()
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
     current_shift_type, next_shift_type = get_shift_type_and_next(ist_now)
     current_shift_code = shift_map[current_shift_type]
@@ -120,14 +138,13 @@ def dashboard():
     handover_counts = []
     priority_counts = []
     for d in date_list:
-        open_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
-            .filter(Incident.status=='Active', Incident.type=='Active', Shift.date==d).count()
-        closed_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
-            .filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date==d).count()
-        handover_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
-            .filter(Incident.type=='Handover', Shift.date==d).count()
-        priority_c = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id) \
-            .filter(Incident.type=='Priority', Shift.date==d).count()
+        base_incident_query = db.session.query(Incident).join(Shift, Incident.shift_id == Shift.id)
+        if current_user.role != 'admin':
+            base_incident_query = base_incident_query.filter(Incident.account_id==current_user.account_id, Incident.team_id==current_user.team_id)
+        open_c = base_incident_query.filter(Incident.status=='Active', Incident.type=='Active', Shift.date==d).count()
+        closed_c = base_incident_query.filter(Incident.status=='Closed', Incident.type=='Closed', Shift.date==d).count()
+        handover_c = base_incident_query.filter(Incident.type=='Handover', Shift.date==d).count()
+        priority_c = base_incident_query.filter(Incident.type=='Priority', Shift.date==d).count()
         open_counts.append(open_c)
         closed_counts.append(closed_c)
         handover_counts.append(handover_c)

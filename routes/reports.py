@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models.models import Shift, Incident, ShiftKeyPoint, TeamMember
 from app import db
 from datetime import datetime
@@ -12,6 +12,8 @@ def handover_reports():
     date_filter = request.args.get('date')
     shift_type_filter = request.args.get('shift_type')
     query = Shift.query
+    if current_user.role != 'admin':
+        query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
     if date_filter:
         try:
             date_obj = datetime.strptime(date_filter, '%Y-%m-%d').date()

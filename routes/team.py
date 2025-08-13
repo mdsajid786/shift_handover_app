@@ -20,14 +20,15 @@ def team():
             email = request.form['email']
             contact_number = request.form['contact_number']
             role = request.form.get('role')
-            member = TeamMember(name=name, email=email, contact_number=contact_number, role=role)
+            member = TeamMember(name=name, email=email, contact_number=contact_number, role=role,
+                               account_id=current_user.account_id, team_id=current_user.team_id)
             db.session.add(member)
             db.session.commit()
             flash('Team member added!')
         elif action == 'edit':
             member_id = request.form['member_id']
             member = TeamMember.query.get(member_id)
-            if member:
+            if member and (current_user.role == 'admin' or (member.account_id == current_user.account_id and member.team_id == current_user.team_id)):
                 member.name = request.form['name']
                 member.email = request.form['email']
                 member.contact_number = request.form['contact_number']
@@ -37,7 +38,7 @@ def team():
         elif action == 'delete':
             member_id = request.form['member_id']
             member = TeamMember.query.get(member_id)
-            if member:
+            if member and (current_user.role == 'admin' or (member.account_id == current_user.account_id and member.team_id == current_user.team_id)):
                 try:
                     db.session.delete(member)
                     db.session.commit()
@@ -49,5 +50,8 @@ def team():
                     else:
                         flash(f'Error deleting team member: {e}', 'danger')
         return redirect(url_for('team.team'))
-    members = TeamMember.query.all()
+    tm_query = TeamMember.query
+    if current_user.role != 'admin':
+        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    members = tm_query.all()
     return render_template('team_details.html', members=members)
