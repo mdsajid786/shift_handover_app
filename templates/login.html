@@ -7,49 +7,72 @@
     <div class="login-card">
         <h2>Login</h2>
         <form method="POST">
-            <div class="mb-3">
+            <div class="mb-3" id="account-group">
                 <label for="account_id" class="form-label">Account</label>
-                <select class="form-select" id="account_id" name="account_id" required>
+                <select class="form-select" id="account_id" name="account_id">
                     <option value="">Select Account</option>
                     {% for account in accounts %}
                         <option value="{{ account.id }}" {% if selected_account_id == account.id %}selected{% endif %}>{{ account.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="mb-3">
+            <div class="mb-3" id="team-group">
                 <label for="team_id" class="form-label">Team</label>
-                <select class="form-select" id="team_id" name="team_id" required {% if not selected_account_id %}disabled{% endif %}>
+                <select class="form-select" id="team_id" name="team_id" {% if not selected_account_id %}disabled{% endif %}>
                     <option value="">Select Team</option>
                     {% for team in teams %}
                         <option value="{{ team.id }}" {% if selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
                     {% endfor %}
                 </select>
-        <script>
-        document.getElementById('account_id').addEventListener('change', function() {
-            var accountId = this.value;
-            var teamSelect = document.getElementById('team_id');
-            teamSelect.innerHTML = '<option value="">Loading...</option>';
-            teamSelect.disabled = true;
-            if (accountId) {
-                fetch('/get_teams?account_id=' + accountId)
-                    .then(response => response.json())
-                    .then(data => {
-                        teamSelect.innerHTML = '<option value="">Select Team</option>';
-                        data.teams.forEach(function(team) {
-                            var opt = document.createElement('option');
-                            opt.value = team.id;
-                            opt.textContent = team.name;
-                            teamSelect.appendChild(opt);
-                        });
-                        teamSelect.disabled = false;
-                    });
-            } else {
-                teamSelect.innerHTML = '<option value="">Select Team</option>';
-                teamSelect.disabled = true;
-            }
-        });
-        </script>
             </div>
+            <script>
+            document.getElementById('account_id').addEventListener('change', function() {
+                var accountId = this.value;
+                var teamSelect = document.getElementById('team_id');
+                teamSelect.innerHTML = '<option value="">Loading...</option>';
+                teamSelect.disabled = true;
+                if (accountId) {
+                    fetch('/get_teams?account_id=' + accountId)
+                        .then(response => response.json())
+                        .then(data => {
+                            teamSelect.innerHTML = '<option value="">Select Team</option>';
+                            data.teams.forEach(function(team) {
+                                var opt = document.createElement('option');
+                                opt.value = team.id;
+                                opt.textContent = team.name;
+                                teamSelect.appendChild(opt);
+                            });
+                            teamSelect.disabled = false;
+                        });
+                } else {
+                    teamSelect.innerHTML = '<option value="">Select Team</option>';
+                    teamSelect.disabled = true;
+                }
+            });
+            // Hide account/team fields if username is superadmin
+            document.getElementById('username').addEventListener('input', function() {
+                var uname = this.value.trim();
+                var accGroup = document.getElementById('account-group');
+                var teamGroup = document.getElementById('team-group');
+                if (uname === 'superadmin') {
+                    accGroup.style.display = 'none';
+                    teamGroup.style.display = 'none';
+                } else {
+                    accGroup.style.display = '';
+                    teamGroup.style.display = '';
+                }
+            });
+            // On page load, hide if username is already superadmin
+            window.addEventListener('DOMContentLoaded', function() {
+                var uname = document.getElementById('username').value.trim();
+                var accGroup = document.getElementById('account-group');
+                var teamGroup = document.getElementById('team-group');
+                if (uname === 'superadmin') {
+                    accGroup.style.display = 'none';
+                    teamGroup.style.display = 'none';
+                }
+            });
+            </script>
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
                 <input type="text" class="form-control" id="username" name="username" required autofocus>

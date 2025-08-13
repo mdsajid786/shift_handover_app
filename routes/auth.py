@@ -1,3 +1,26 @@
+from flask import session
+# Add route to set account/team selection in session
+@auth_bp.route('/set_selection', methods=['POST'])
+@login_required
+def set_selection():
+    account_id = request.form.get('account_id', type=int)
+    team_id = request.form.get('team_id', type=int)
+    if current_user.role == 'super_admin':
+        session['selected_account_id'] = account_id
+        session['selected_team_id'] = team_id
+    elif current_user.role == 'account_admin':
+        session['selected_account_id'] = current_user.account_id
+        session['selected_team_id'] = team_id
+    # Team admin/user: do not allow changing
+    return redirect(request.referrer or url_for('dashboard.dashboard'))
+# Make accounts/teams available in all templates
+@auth_bp.app_context_processor
+def inject_accounts_teams():
+    from models.models import Account, Team
+    accounts = Account.query.all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
+    selected_account_id = session.get('selected_account_id')
+    teams = Team.query.filter_by(account_id=selected_account_id).all() if selected_account_id else []
+    return dict(accounts=accounts, teams=teams)
 
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash
@@ -33,15 +56,26 @@ def login():
     if selected_account_id_int:
         teams = Team.query.filter_by(account_id=selected_account_id_int).all()
 
-    if request.method == 'POST' and 'username' in request.form and 'password' in request.form and selected_account_id_int and selected_team_id_int:
+    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
         password = request.form['password']
-        user = User.query.filter_by(username=username, account_id=selected_account_id_int, team_id=selected_team_id_int).first()
-        if user and check_password_hash(user.password, password):
-            login_user(user)
-            return redirect(url_for('dashboard.dashboard'))
+        # Always check for superadmin first, regardless of account/team fields
+        user = User.query.filter_by(username=username).first()
+        if user and user.role == 'super_admin':
+            if check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid credentials')
+        elif selected_account_id_int and selected_team_id_int:
+            user = User.query.filter_by(username=username, account_id=selected_account_id_int, team_id=selected_team_id_int).first()
+            if user and check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid credentials')
         else:
-            flash('Invalid credentials')
+            flash('Please select account and team')
     return render_template('login.html', accounts=accounts, teams=teams, selected_account_id=selected_account_id_int, selected_team_id=selected_team_id_int)
 
 @auth_bp.route('/logout')

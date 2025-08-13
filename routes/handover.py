@@ -1,6 +1,7 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
+from flask import session
 from models.models import TeamMember, Shift, Incident, ShiftKeyPoint, ShiftRoster, current_shift_engineers, next_shift_engineers
 from app import db
 from services.email_service import send_handover_email
@@ -45,7 +46,21 @@ def get_engineers():
 def handover_drafts():
     # Show all drafts (no created_by field in Shift model)
     query = Shift.query.filter_by(status='draft')
-    if current_user.role != 'admin':
+    # Use session-based filtering for super/account admin
+    if current_user.role == 'super_admin':
+        account_id = session.get('selected_account_id')
+        team_id = session.get('selected_team_id')
+        if account_id:
+            query = query.filter_by(account_id=account_id)
+        if team_id:
+            query = query.filter_by(team_id=team_id)
+    elif current_user.role == 'account_admin':
+        account_id = current_user.account_id
+        team_id = session.get('selected_team_id')
+        query = query.filter_by(account_id=account_id)
+        if team_id:
+            query = query.filter_by(team_id=team_id)
+    else:
         query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
     drafts = query.all()
     return render_template('handover_drafts.html', drafts=drafts)

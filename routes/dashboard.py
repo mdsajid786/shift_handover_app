@@ -51,13 +51,13 @@ def dashboard():
     next_shift_code = shift_map[next_shift_type]
     next_date = today + timedelta(days=1)
 
-    # Role-based filtering
+
+    from flask import session
     accounts = Account.query.all() if current_user.role in ['super_admin', 'account_admin'] else []
     teams = []
-    selected_account_id = request.args.get('account_id', type=int)
-    selected_team_id = request.args.get('team_id', type=int)
+    selected_account_id = session.get('selected_account_id')
+    selected_team_id = session.get('selected_team_id')
 
-    # Super Admin: can select any account/team
     if current_user.role == 'super_admin':
         if selected_account_id:
             teams = Team.query.filter_by(account_id=selected_account_id).all()
@@ -68,14 +68,15 @@ def dashboard():
             selected_team_id = teams[0].id
         filter_account_id = selected_account_id
         filter_team_id = selected_team_id
-    # Account Admin: can select any team in their account
     elif current_user.role == 'account_admin':
         filter_account_id = current_user.account_id
         teams = Team.query.filter_by(account_id=filter_account_id).all()
-        if not selected_team_id and teams:
-            selected_team_id = teams[0].id
-        filter_team_id = selected_team_id
-    # Team Admin/User: only their own team
+        if selected_team_id and any(t.id == selected_team_id for t in teams):
+            filter_team_id = selected_team_id
+        elif teams:
+            filter_team_id = teams[0].id
+        else:
+            filter_team_id = None
     else:
         filter_account_id = current_user.account_id
         filter_team_id = current_user.team_id

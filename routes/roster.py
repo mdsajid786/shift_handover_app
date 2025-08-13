@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
+from flask import session
 from models.models import TeamMember, ShiftRoster
 from app import db
 from datetime import datetime
@@ -33,7 +34,20 @@ def roster():
     filter_date = request.args.get('filter_date')
     filter_shift = request.args.get('filter_shift')
     query = db.session.query(ShiftRoster)
-    if current_user.role != 'admin':
+    if current_user.role == 'super_admin':
+        account_id = session.get('selected_account_id')
+        team_id = session.get('selected_team_id')
+        if account_id:
+            query = query.filter(ShiftRoster.account_id==account_id)
+        if team_id:
+            query = query.filter(ShiftRoster.team_id==team_id)
+    elif current_user.role == 'account_admin':
+        account_id = current_user.account_id
+        team_id = session.get('selected_team_id')
+        query = query.filter(ShiftRoster.account_id==account_id)
+        if team_id:
+            query = query.filter(ShiftRoster.team_id==team_id)
+    else:
         query = query.filter(ShiftRoster.account_id==current_user.account_id, ShiftRoster.team_id==current_user.team_id)
     if month:
         query = query.filter(db.extract('month', ShiftRoster.date) == month)
@@ -41,7 +55,20 @@ def roster():
         query = query.filter(db.extract('year', ShiftRoster.date) == year)
     roster_entries = query.order_by(ShiftRoster.date).all()
     tm_query = TeamMember.query
-    if current_user.role != 'admin':
+    if current_user.role == 'super_admin':
+        account_id = session.get('selected_account_id')
+        team_id = session.get('selected_team_id')
+        if account_id:
+            tm_query = tm_query.filter_by(account_id=account_id)
+        if team_id:
+            tm_query = tm_query.filter_by(team_id=team_id)
+    elif current_user.role == 'account_admin':
+        account_id = current_user.account_id
+        team_id = session.get('selected_team_id')
+        tm_query = tm_query.filter_by(account_id=account_id)
+        if team_id:
+            tm_query = tm_query.filter_by(team_id=team_id)
+    else:
         tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
     all_members = tm_query.all()
     # Build a set of all dates in the filtered result
