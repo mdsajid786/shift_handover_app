@@ -80,7 +80,10 @@
                 }
             }
             document.getElementById('username').addEventListener('input', updateLoginFields);
-            window.addEventListener('DOMContentLoaded', updateLoginFields);
+            // Ensure correct field visibility on page load (including autofill)
+            window.addEventListener('DOMContentLoaded', function() {
+                setTimeout(updateLoginFields, 0);
+            });
             </script>
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>

@@ -80,6 +80,13 @@ def login():
                 return redirect(url_for('dashboard.dashboard'))
             else:
                 flash('Invalid credentials or team/account mismatch')
+        elif user and user.role == 'user':
+            # Regular User: must match username/account/team
+            if selected_account_id_int == user.account_id and selected_team_id_int == user.team_id and check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid credentials or team/account mismatch')
         else:
             flash('Invalid credentials or role')
     return render_template('login.html', accounts=accounts, teams=teams, selected_account_id=selected_account_id_int, selected_team_id=selected_team_id_int)

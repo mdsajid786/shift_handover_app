@@ -36,7 +36,7 @@
                         <li class="nav-item"><a class="nav-link" href="/handover-reports">Shift Handover Reports</a></li>
                         <li class="nav-item"><a class="nav-link" href="/escalation-matrix">Escalation Matrix</a></li>
                         <li class="nav-item"><a class="nav-link" href="/keypoints">Key Points Updates</a></li>
-                        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                        {% if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin', 'team_admin'] %}
                         <li class="nav-item"><a class="nav-link" href="/user-management">User Management</a></li>
                         {% endif %}
                     </ul>
