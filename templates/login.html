@@ -49,29 +49,38 @@
                     teamSelect.disabled = true;
                 }
             });
-            // Hide account/team fields if username is superadmin
-            document.getElementById('username').addEventListener('input', function() {
-                var uname = this.value.trim();
-                var accGroup = document.getElementById('account-group');
-                var teamGroup = document.getElementById('team-group');
-                if (uname === 'superadmin') {
-                    accGroup.style.display = 'none';
-                    teamGroup.style.display = 'none';
-                } else {
-                    accGroup.style.display = '';
-                    teamGroup.style.display = '';
-                }
-            });
-            // On page load, hide if username is already superadmin
-            window.addEventListener('DOMContentLoaded', function() {
+            // Role-based dynamic field display
+            function updateLoginFields() {
                 var uname = document.getElementById('username').value.trim();
                 var accGroup = document.getElementById('account-group');
                 var teamGroup = document.getElementById('team-group');
+                // Super Admin: hide both
                 if (uname === 'superadmin') {
                     accGroup.style.display = 'none';
                     teamGroup.style.display = 'none';
+                    document.getElementById('account_id').required = false;
+                    document.getElementById('team_id').required = false;
+                // Account Admin: show account, team optional
+                } else if (uname.startsWith('accadmin')) {
+                    accGroup.style.display = '';
+                    teamGroup.style.display = '';
+                    document.getElementById('account_id').required = true;
+                    document.getElementById('team_id').required = false;
+                // Team Admin: require both
+                } else if (uname.endsWith('_admin')) {
+                    accGroup.style.display = '';
+                    teamGroup.style.display = '';
+                    document.getElementById('account_id').required = true;
+                    document.getElementById('team_id').required = true;
+                } else {
+                    accGroup.style.display = '';
+                    teamGroup.style.display = '';
+                    document.getElementById('account_id').required = false;
+                    document.getElementById('team_id').required = false;
                 }
-            });
+            }
+            document.getElementById('username').addEventListener('input', updateLoginFields);
+            window.addEventListener('DOMContentLoaded', updateLoginFields);
             </script>
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
