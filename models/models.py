@@ -7,12 +7,16 @@ from flask_login import UserMixin
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default='active')  # 'active', 'disabled'
     teams = db.relationship('Team', backref='account', lazy=True)
     users = db.relationship('User', backref='account', lazy=True)
 
 class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default='active')  # 'active', 'disabled'
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     members = db.relationship('TeamMember', backref='team', lazy=True)
     users = db.relationship('User', backref='team', lazy=True)
@@ -37,6 +41,8 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(32), nullable=False, default='user')  # 'super_admin', 'account_admin', 'team_admin', 'user'
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default='active')  # 'active', 'disabled'
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
 

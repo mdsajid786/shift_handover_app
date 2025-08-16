@@ -51,8 +51,8 @@ def dashboard():
     next_shift_code = shift_map[next_shift_type]
     next_date = today + timedelta(days=1)
 
-
     from flask import session
+    print(f"[DEBUG] Dashboard: current_user.is_authenticated={getattr(current_user, 'is_authenticated', None)}, id={getattr(current_user, 'id', None)}, username={getattr(current_user, 'username', None)}")
     accounts = Account.query.all() if current_user.role in ['super_admin', 'account_admin'] else []
     teams = []
     selected_account_id = session.get('selected_account_id')

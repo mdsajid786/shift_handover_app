@@ -22,7 +22,23 @@ def escalation_matrix():
         if file and file.filename.endswith('.xlsx'):
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
-            flash('Escalation matrix uploaded successfully!')
+            # Save file info to EscalationMatrixFile table
+            from models.models import EscalationMatrixFile, db
+            import datetime
+            matrix_file = EscalationMatrixFile(filename=file.filename, upload_time=datetime.datetime.now())
+            db.session.add(matrix_file)
+            # Parse and save each sheet/row if you have a model for escalation matrix rows
+            xls = pd.ExcelFile(filepath)
+            for sheet_name in xls.sheet_names:
+                df = xls.parse(sheet_name)
+                table_data = df.where(pd.notnull(df), '').to_dict(orient='records')
+                # If you have a model like EscalationMatrixRow, save each row
+                # from models.models import EscalationMatrixRow
+                # for row in table_data:
+                #     escalation_row = EscalationMatrixRow(...)
+                #     db.session.add(escalation_row)
+            db.session.commit()
+            flash('Escalation matrix uploaded and saved successfully!')
             return redirect(url_for('escalation_matrix.escalation_matrix'))
         else:
             flash('Please upload a valid .xlsx file.')

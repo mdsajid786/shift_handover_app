@@ -54,6 +54,12 @@ def roster():
     if year:
         query = query.filter(db.extract('year', ShiftRoster.date) == year)
     roster_entries = query.order_by(ShiftRoster.date).all()
+    from flask import session
+    selected_account_id = session.get('selected_account_id')
+    selected_team_id = session.get('selected_team_id')
+    flash(f"Roster view filter: month={month}, year={year}, selected_account_id={selected_account_id}, selected_team_id={selected_team_id}, user_account_id={getattr(current_user, 'account_id', None)}, user_team_id={getattr(current_user, 'team_id', None)}")
+    if not roster_entries:
+        flash(f"No shift roster data found for month={month}, year={year}, account_id={selected_account_id if selected_account_id is not None else getattr(current_user, 'account_id', None)}, team_id={selected_team_id if selected_team_id is not None else getattr(current_user, 'team_id', None)}.")
     tm_query = TeamMember.query
     if current_user.role == 'super_admin':
         account_id = session.get('selected_account_id')
@@ -81,7 +87,9 @@ def roster():
             roster_data[member.name][entry.date] = entry.shift_code
     # For dropdowns
     months = [calendar.month_name[i] for i in range(1, 13)]
-    years = sorted({d.date.year for d in db.session.query(ShiftRoster.date).distinct() if d.date})
+    # Show current year and next 10 years
+    current_year = now.year
+    years = [current_year + i for i in range(11)]
 
     # Additional filter: present team members for selected date and shift
     present_members = []

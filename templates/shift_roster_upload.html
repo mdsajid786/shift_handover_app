@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Shift Roster Upload</h2>
-<form method="POST" enctype="multipart/form-data" class="mb-4">
+<form method="POST" action="{{ url_for('roster_upload.roster_upload') }}" enctype="multipart/form-data" class="mb-4">
     <input type="file" name="file" accept=".xlsx" required>
     <button type="submit" class="btn btn-primary">Upload</button>
 </form>
