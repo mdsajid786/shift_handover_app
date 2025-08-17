@@ -4,25 +4,53 @@
     <h2 class="mb-4">Key Points Updates</h2>
     <form method="get" class="row g-2 mb-3">
         {% if current_user.role == 'super_admin' %}
-        <div class="col-auto">
-            <select name="account_id" class="form-select">
+        <div class="col-md-3">
+            <label for="account_id" class="form-label">Account</label>
+            <select name="account_id" id="account_id" class="form-select" onchange="updateTeamsDropdown(this.value)">
                 <option value="">All Accounts</option>
                 {% for account in accounts %}
                 <option value="{{ account.id }}" {% if account.id|string == selected_account_id|string %}selected{% endif %}>{{ account.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="col-auto">
-            <select name="team_id" class="form-select">
+        <div class="col-md-3">
+            <label for="team_id" class="form-label">Team</label>
+            <select name="team_id" id="team_id" class="form-select">
                 <option value="">All Teams</option>
                 {% for team in teams %}
                 <option value="{{ team.id }}" {% if team.id|string == selected_team_id|string %}selected{% endif %}>{{ team.name }}</option>
                 {% endfor %}
             </select>
         </div>
+        <script>
+        function updateTeamsDropdown(accountId) {
+            fetch('/get_teams?account_id=' + accountId)
+                .then(response => response.json())
+                .then(data => {
+                    const teamSelect = document.getElementById('team_id');
+                    const selectedTeam = teamSelect.value;
+                    teamSelect.innerHTML = '<option value="">All Teams</option>';
+                    let foundSelected = false;
+                    data.teams.forEach(team => {
+                        let selected = '';
+                        if (selectedTeam == team.id.toString()) { selected = 'selected'; foundSelected = true; }
+                        teamSelect.innerHTML += `<option value="${team.id}" ${selected}>${team.name}</option>`;
+                    });
+                    // If selectedTeam is empty (All Teams), keep it selected
+                    if (selectedTeam === '') {
+                        teamSelect.value = '';
+                    } else if (!foundSelected) {
+                        teamSelect.value = '';
+                    } else {
+                        teamSelect.value = selectedTeam;
+                    }
+                });
+        }
+        </script>
         {% elif current_user.role == 'account_admin' %}
-        <div class="col-auto">
-            <select name="team_id" class="form-select">
+        <div class="col-md-3">
+            <label for="team_id" class="form-label">Team</label>
+            <select name="team_id" id="team_id" class="form-select">
                 <option value="">All Teams</option>
                 {% for team in teams %}
                 <option value="{{ team.id }}" {% if team.id|string == selected_team_id|string %}selected{% endif %}>{{ team.name }}</option>
@@ -30,19 +58,21 @@
             </select>
         </div>
         {% endif %}
-        <div class="col-auto">
-            <select name="status" class="form-select">
+        <div class="col-md-2">
+            <label for="status" class="form-label">Status</label>
+            <select name="status" id="status" class="form-select">
                 <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
                 <option value="Open" {% if status_filter=='Open' %}selected{% endif %}>Open</option>
                 <option value="Closed" {% if status_filter=='Closed' %}selected{% endif %}>Closed</option>
                 <option value="In Progress" {% if status_filter=='In Progress' %}selected{% endif %}>In Progress</option>
             </select>
         </div>
-        <div class="col-auto">
-            <input type="date" name="date" class="form-control" value="{{ date_filter or '' }}">
+        <div class="col-md-2">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" name="date" id="date" class="form-control" value="{{ date_filter or '' }}">
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Filter</button>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
         </div>
     </form>
     {% for kp in key_points %}

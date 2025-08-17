@@ -52,7 +52,12 @@ def keypoints():
         if account_id:
             teams = teams.filter_by(account_id=account_id)
         teams = teams.all()
-        team_id = request.args.get('team_id') or (session.get('selected_team_id') if hasattr(session, 'get') else None)
+        team_id = request.args.get('team_id')
+        # If team_id is empty string or None, treat as 'All Teams'
+        if not team_id:
+            selected_team_id = None
+        else:
+            selected_team_id = team_id
     elif current_user.role == 'account_admin':
         account_id = current_user.account_id
         accounts = [Account.query.get(account_id)] if account_id else []
@@ -66,6 +71,7 @@ def keypoints():
     query = ShiftKeyPoint.query
     if account_id:
         query = query.filter_by(account_id=account_id)
+    # Only filter by team_id if it is set and not empty string
     if team_id:
         query = query.filter_by(team_id=team_id)
     if status_filter != 'all':
@@ -77,7 +83,7 @@ def keypoints():
         if date_filter:
             updates_query = updates_query.filter_by(update_date=date.fromisoformat(date_filter))
         updates_by_kp[kp.id] = updates_query.order_by(ShiftKeyPointUpdate.update_date.desc()).all()
-    return render_template('keypoints_updates.html', key_points=key_points, updates_by_kp=updates_by_kp, status_filter=status_filter, date_filter=date_filter, accounts=accounts, teams=teams, selected_account_id=account_id, selected_team_id=team_id)
+    return render_template('keypoints_updates.html', key_points=key_points, updates_by_kp=updates_by_kp, status_filter=status_filter, date_filter=date_filter, accounts=accounts, teams=teams, selected_account_id=account_id, selected_team_id=(selected_team_id if current_user.role == 'super_admin' else team_id))
 
 @keypoints_bp.route('/keypoints/update/<int:key_point_id>', methods=['POST'])
 @login_required

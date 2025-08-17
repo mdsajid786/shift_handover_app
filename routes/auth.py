@@ -24,9 +24,9 @@ def set_selection():
 # Make accounts/teams available in all templates
 @auth_bp.app_context_processor
 def inject_accounts_teams():
-    accounts = Account.query.filter_by(active=True).all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
+    accounts = Account.query.filter_by(is_active=True).all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
     selected_account_id = session.get('selected_account_id')
-    teams = Team.query.filter_by(account_id=selected_account_id, active=True).all() if selected_account_id else []
+    teams = Team.query.filter_by(account_id=selected_account_id, is_active=True).all() if selected_account_id else []
     return dict(accounts=accounts, teams=teams)
 
 from flask import jsonify

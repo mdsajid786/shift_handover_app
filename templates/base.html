@@ -62,31 +62,7 @@
                                 </div>
                             </div>
                         </div>
-                        {% if current_user.role in ['super_admin', 'account_admin'] %}
-                        <form method="post" action="{{ url_for('auth.set_selection') }}" id="accountTeamSelector" class="mb-2">
-                            <div class="d-flex gap-2">
-                                <select name="account_id" id="global_account_id" class="form-select" style="max-width: 140px;" {% if current_user.role == 'account_admin' %}disabled{% endif %} onchange="this.form.submit()">
-                                    {% for account in accounts %}
-                                        <option value="{{ account.id }}" {% if session.selected_account_id == account.id %}selected{% endif %}>{{ account.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <select name="team_id" id="global_team_id" class="form-select" style="max-width: 140px;" onchange="this.form.submit()">
-                                    {% for team in teams %}
-                                        <option value="{{ team.id }}" {% if session.selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </form>
-                        <script>
-                        // Auto-submit on change
-                        document.getElementById('global_account_id')?.addEventListener('change', function() {
-                            document.getElementById('accountTeamSelector').submit();
-                        });
-                        document.getElementById('global_team_id')?.addEventListener('change', function() {
-                            document.getElementById('accountTeamSelector').submit();
-                        });
-                        </script>
-                        {% endif %}
+                        <!-- Removed global account/team filter for super_admin/account_admin -->
                     </div>
                     {% endif %}
                 </div>

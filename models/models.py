@@ -24,8 +24,10 @@ class Team(db.Model):
 # Escalation Matrix File model for persistent uploads
 class EscalationMatrixFile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(256), nullable=False)
+    filename = db.Column(db.String(255), unique=True, nullable=False)
     upload_time = db.Column(db.DateTime, nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
 
 class ShiftRoster(db.Model):
     id = db.Column(db.Integer, primary_key=True)

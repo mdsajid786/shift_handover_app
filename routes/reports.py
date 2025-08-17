@@ -38,6 +38,7 @@ def handover_reports():
         teams = [Team.query.get(team_id)] if team_id else []
     if account_id:
         query = query.filter_by(account_id=account_id)
+    # Only filter by team_id if it is set and not empty string
     if team_id:
         query = query.filter_by(team_id=team_id)
     if date_filter:
