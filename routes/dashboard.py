@@ -53,33 +53,31 @@ def dashboard():
 
     from flask import session
     print(f"[DEBUG] Dashboard: current_user.is_authenticated={getattr(current_user, 'is_authenticated', None)}, id={getattr(current_user, 'id', None)}, username={getattr(current_user, 'username', None)}")
-    accounts = Account.query.all() if current_user.role in ['super_admin', 'account_admin'] else []
+    accounts = []
     teams = []
-    selected_account_id = session.get('selected_account_id')
-    selected_team_id = session.get('selected_team_id')
-
+    selected_account_id = None
+    selected_team_id = None
     if current_user.role == 'super_admin':
+        accounts = Account.query.filter_by(is_active=True).all()
+        selected_account_id = request.args.get('account_id') or session.get('selected_account_id')
+        teams = Team.query.filter_by(is_active=True)
         if selected_account_id:
-            teams = Team.query.filter_by(account_id=selected_account_id).all()
-        if not selected_account_id and accounts:
-            selected_account_id = accounts[0].id
-            teams = Team.query.filter_by(account_id=selected_account_id).all()
-        if not selected_team_id and teams:
-            selected_team_id = teams[0].id
+            teams = teams.filter_by(account_id=selected_account_id)
+        teams = teams.all()
+        selected_team_id = request.args.get('team_id') or session.get('selected_team_id')
         filter_account_id = selected_account_id
         filter_team_id = selected_team_id
     elif current_user.role == 'account_admin':
         filter_account_id = current_user.account_id
-        teams = Team.query.filter_by(account_id=filter_account_id).all()
-        if selected_team_id and any(t.id == selected_team_id for t in teams):
-            filter_team_id = selected_team_id
-        elif teams:
-            filter_team_id = teams[0].id
-        else:
-            filter_team_id = None
+        accounts = [Account.query.get(filter_account_id)] if filter_account_id else []
+        teams = Team.query.filter_by(account_id=filter_account_id, is_active=True).all()
+        selected_team_id = request.args.get('team_id') or session.get('selected_team_id')
+        filter_team_id = selected_team_id if selected_team_id else (teams[0].id if teams else None)
     else:
         filter_account_id = current_user.account_id
         filter_team_id = current_user.team_id
+        accounts = [Account.query.get(filter_account_id)] if filter_account_id else []
+        teams = [Team.query.get(filter_team_id)] if filter_team_id else []
 
     # Filter data by account/team
     open_incidents = Incident.query.filter_by(account_id=filter_account_id, team_id=filter_team_id, status='Active').all()

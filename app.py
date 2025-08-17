@@ -13,7 +13,8 @@ app.config.from_object(Config)
 
 
 # Initialize extensions
-db = SQLAlchemy(app)
+from models.models import db
+db.init_app(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
 migrate = Migrate(app, db)

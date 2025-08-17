@@ -24,9 +24,9 @@ def set_selection():
 # Make accounts/teams available in all templates
 @auth_bp.app_context_processor
 def inject_accounts_teams():
-    accounts = Account.query.all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
+    accounts = Account.query.filter_by(active=True).all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
     selected_account_id = session.get('selected_account_id')
-    teams = Team.query.filter_by(account_id=selected_account_id).all() if selected_account_id else []
+    teams = Team.query.filter_by(account_id=selected_account_id, active=True).all() if selected_account_id else []
     return dict(accounts=accounts, teams=teams)
 
 from flask import jsonify
@@ -37,7 +37,7 @@ def get_teams():
     account_id = request.args.get('account_id')
     teams = []
     if account_id:
-        teams = Team.query.filter_by(account_id=account_id).all()
+        teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
     return jsonify({
         'teams': [{'id': t.id, 'name': t.name} for t in teams]
     })
@@ -45,7 +45,7 @@ def get_teams():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    accounts = Account.query.all()
+    accounts = Account.query.filter_by(is_active=True).all()
     selected_account_id = request.form.get('account_id')
     selected_team_id = request.form.get('team_id')
     # Convert to int if present, else None
@@ -53,7 +53,7 @@ def login():
     selected_team_id_int = int(selected_team_id) if selected_team_id and selected_team_id.isdigit() else None
     teams = []
     if selected_account_id_int:
-        teams = Team.query.filter_by(account_id=selected_account_id_int).all()
+        teams = Team.query.filter_by(account_id=selected_account_id_int, is_active=True).all()
 
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']

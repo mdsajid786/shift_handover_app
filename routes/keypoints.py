@@ -1,5 +1,5 @@
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from models.models import ShiftKeyPoint, ShiftKeyPointUpdate
 from app import db
@@ -37,9 +37,37 @@ def delete_keypoint_update(update_id):
 @keypoints_bp.route('/keypoints', methods=['GET', 'POST'])
 @login_required
 def keypoints():
+    from models.models import Account, Team
     status_filter = request.args.get('status', 'all')
     date_filter = request.args.get('date')
+    account_id = None
+    team_id = None
+    accounts = []
+    teams = []
+    # Role-based filter logic
+    if current_user.role == 'super_admin':
+        accounts = Account.query.filter_by(is_active=True).all()
+        account_id = request.args.get('account_id') or (session.get('selected_account_id') if hasattr(session, 'get') else None)
+        teams = Team.query.filter_by(is_active=True)
+        if account_id:
+            teams = teams.filter_by(account_id=account_id)
+        teams = teams.all()
+        team_id = request.args.get('team_id') or (session.get('selected_team_id') if hasattr(session, 'get') else None)
+    elif current_user.role == 'account_admin':
+        account_id = current_user.account_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
+        team_id = request.args.get('team_id') or (session.get('selected_team_id') if hasattr(session, 'get') else None)
+    else:
+        account_id = current_user.account_id
+        team_id = current_user.team_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = [Team.query.get(team_id)] if team_id else []
     query = ShiftKeyPoint.query
+    if account_id:
+        query = query.filter_by(account_id=account_id)
+    if team_id:
+        query = query.filter_by(team_id=team_id)
     if status_filter != 'all':
         query = query.filter_by(status=status_filter)
     key_points = query.all()
@@ -49,7 +77,7 @@ def keypoints():
         if date_filter:
             updates_query = updates_query.filter_by(update_date=date.fromisoformat(date_filter))
         updates_by_kp[kp.id] = updates_query.order_by(ShiftKeyPointUpdate.update_date.desc()).all()
-    return render_template('keypoints_updates.html', key_points=key_points, updates_by_kp=updates_by_kp, status_filter=status_filter, date_filter=date_filter)
+    return render_template('keypoints_updates.html', key_points=key_points, updates_by_kp=updates_by_kp, status_filter=status_filter, date_filter=date_filter, accounts=accounts, teams=teams, selected_account_id=account_id, selected_team_id=team_id)
 
 @keypoints_bp.route('/keypoints/update/<int:key_point_id>', methods=['POST'])
 @login_required

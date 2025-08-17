@@ -1,25 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Shift Roster Upload</h2>
-<form method="POST" action="{{ url_for('roster_upload.roster_upload') }}" enctype="multipart/form-data" class="mb-4">
-    <input type="file" name="file" accept=".xlsx" required>
-    <button type="submit" class="btn btn-primary">Upload</button>
-</form>
-{% if table_data %}
-    <h4>Uploaded Roster</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                {% for col in columns %}<th>{{ col }}</th>{% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in table_data %}
-            <tr>
-                {% for col in columns %}<td>{{ row[col] }}</td>{% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endif %}
+<div class="dashboard-upload-card card shadow p-4 mb-4 bg-white rounded">
+    <h2 class="mb-3">Shift Roster Upload</h2>
+    <form method="POST" action="{{ url_for('roster_upload.roster_upload') }}" enctype="multipart/form-data" class="mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="file" class="form-label">Upload Excel (.xlsx)</label>
+                <input type="file" name="file" id="file" accept=".xlsx" required class="form-control">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-success">Upload Roster</button>
+            </div>
+        </div>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-info mt-2">
+          {% for message in messages %}
+            <div>{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% if table_data %}
+        <h4 class="mt-4">Uploaded Roster Preview</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table_data %}
+                    <tr>
+                        {% for col in columns %}<td>{{ row[col] }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
 {% endblock %}

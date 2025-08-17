@@ -33,33 +33,42 @@ def roster():
         year = now.year
     filter_date = request.args.get('filter_date')
     filter_shift = request.args.get('filter_shift')
+    from models.models import Account, Team
     query = db.session.query(ShiftRoster)
+    account_id = None
+    team_id = None
+    accounts = []
+    teams = []
     if current_user.role == 'super_admin':
-        account_id = session.get('selected_account_id')
-        team_id = session.get('selected_team_id')
+        accounts = Account.query.filter_by(is_active=True).all()
+        account_id = request.args.get('account_id') or session.get('selected_account_id')
+        teams = Team.query.filter_by(is_active=True)
         if account_id:
-            query = query.filter(ShiftRoster.account_id==account_id)
-        if team_id:
-            query = query.filter(ShiftRoster.team_id==team_id)
+            teams = teams.filter_by(account_id=account_id)
+        teams = teams.all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
     elif current_user.role == 'account_admin':
         account_id = current_user.account_id
-        team_id = session.get('selected_team_id')
-        query = query.filter(ShiftRoster.account_id==account_id)
-        if team_id:
-            query = query.filter(ShiftRoster.team_id==team_id)
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
     else:
-        query = query.filter(ShiftRoster.account_id==current_user.account_id, ShiftRoster.team_id==current_user.team_id)
+        account_id = current_user.account_id
+        team_id = current_user.team_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = [Team.query.get(team_id)] if team_id else []
+    if account_id:
+        query = query.filter(ShiftRoster.account_id==account_id)
+    if team_id:
+        query = query.filter(ShiftRoster.team_id==team_id)
+    # Removed debug flash
     if month:
         query = query.filter(db.extract('month', ShiftRoster.date) == month)
     if year:
         query = query.filter(db.extract('year', ShiftRoster.date) == year)
     roster_entries = query.order_by(ShiftRoster.date).all()
-    from flask import session
-    selected_account_id = session.get('selected_account_id')
-    selected_team_id = session.get('selected_team_id')
-    flash(f"Roster view filter: month={month}, year={year}, selected_account_id={selected_account_id}, selected_team_id={selected_team_id}, user_account_id={getattr(current_user, 'account_id', None)}, user_team_id={getattr(current_user, 'team_id', None)}")
     if not roster_entries:
-        flash(f"No shift roster data found for month={month}, year={year}, account_id={selected_account_id if selected_account_id is not None else getattr(current_user, 'account_id', None)}, team_id={selected_team_id if selected_team_id is not None else getattr(current_user, 'team_id', None)}.")
+        pass
     tm_query = TeamMember.query
     if current_user.role == 'super_admin':
         account_id = session.get('selected_account_id')
@@ -76,7 +85,12 @@ def roster():
             tm_query = tm_query.filter_by(team_id=team_id)
     else:
         tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
-    all_members = tm_query.all()
+    all_members_all = tm_query.all()
+    # Only include members with at least one shift entry
+    member_ids_with_shifts = {entry.team_member_id for entry in roster_entries}
+    all_members = [m for m in all_members_all if m.id in member_ids_with_shifts]
+    # Debug: Show roster_entries and all_members
+    # Removed debug flash
     # Build a set of all dates in the filtered result
     all_dates = sorted({entry.date for entry in roster_entries})
     # Build roster data: {member_name: {date: shift_code}}

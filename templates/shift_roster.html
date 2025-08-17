@@ -2,65 +2,63 @@
 {% block content %}
 <div class="card-roster">
     <h2>Shift Roster</h2>
-    <!-- Full Roster Filter: Month/Year -->
-    <form method="GET" class="mb-4">
-        <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <label for="month" class="form-label">Month</label>
-                <select name="month" id="month" class="form-select">
-                    <option value="">All</option>
-                    {% for m in months %}
-                    <option value="{{ m }}" {% if m == months[selected_month-1] %}selected{% endif %}>{{ m }}</option>
-                    {% endfor %}
-                </select>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm p-3 mb-3 bg-light">
+                    <h5 class="mb-3">Roster Table: Month/Year Filter</h5>
+                    <form method="GET">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-auto">
+                                <label for="month" class="form-label">Month</label>
+                                <select name="month" id="month" class="form-select">
+                                    <option value="">All</option>
+                                    {% for m in months %}
+                                    <option value="{{ m }}" {% if m == months[selected_month-1] %}selected{% endif %}>{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label for="year" class="form-label">Year</label>
+                                <select name="year" id="year" class="form-select">
+                                    <option value="">All</option>
+                                    {% for y in years %}
+                                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">Show Roster</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="col-auto">
-                <label for="year" class="form-label">Year</label>
-                <select name="year" id="year" class="form-select">
-                    <option value="">All</option>
-                    {% for y in years %}
-                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary">Show Roster</button>
+            <div class="col-md-6">
+                <div class="card shadow-sm p-3 mb-3 bg-light">
+                    <h5 class="mb-3">Present Team Members: Date/Shift Filter</h5>
+                    <form method="GET">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-auto">
+                                <label for="filter_date" class="form-label">Date</label>
+                                <input type="date" name="filter_date" id="filter_date" class="form-control" value="{{ filter_date or '' }}">
+                            </div>
+                            <div class="col-auto">
+                                <label for="filter_shift" class="form-label">Shift</label>
+                                <select name="filter_shift" id="filter_shift" class="form-select">
+                                    <option value="">All</option>
+                                    <option value="D" {% if filter_shift == 'D' %}selected{% endif %}>Day</option>
+                                    <option value="E" {% if filter_shift == 'E' %}selected{% endif %}>Evening</option>
+                                    <option value="N" {% if filter_shift == 'N' %}selected{% endif %}>Night</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">Show Present Team</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </form>
-
-    <!-- Present Team Members Filter: Date/Shift -->
-    <form method="GET" class="mb-4">
-        <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <label for="filter_date" class="form-label">Date</label>
-                <input type="date" name="filter_date" id="filter_date" class="form-control" value="{{ filter_date or '' }}">
-            </div>
-            <div class="col-auto">
-                <label for="filter_shift" class="form-label">Shift</label>
-                <select name="filter_shift" id="filter_shift" class="form-select">
-                    <option value="">All</option>
-                    <option value="D" {% if filter_shift == 'D' %}selected{% endif %}>Day</option>
-                    <option value="E" {% if filter_shift == 'E' %}selected{% endif %}>Evening</option>
-                    <option value="N" {% if filter_shift == 'N' %}selected{% endif %}>Night</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary">Show Present Team</button>
-            </div>
-        </div>
-    </form>
-    <form method="POST" enctype="multipart/form-data" class="mb-4">
-        <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <input type="file" name="file" accept=".xlsx" required class="form-control">
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-success">Upload Roster</button>
-            </div>
-        </div>
-    </form>
-
     {% if filter_date %}
         {% if filter_shift and present_members %}
         <div class="mb-4">
@@ -92,7 +90,6 @@
         {% endif %}
     {% endif %}
 
-    {% if all_dates and all_members %}
     <div class="mb-3">
         <span class="badge roster-shift-D">Day</span>
         <span class="badge roster-shift-E">Evening</span>
@@ -101,32 +98,35 @@
         <span class="badge roster-shift-G">General</span>
         <span class="badge roster-shift-empty">No Shift</span>
     </div>
-    <div class="table-responsive">
-        <table class="table table-bordered roster-heatmap-table">
-            <thead>
-                <tr>
-                    <th>Team Member</th>
-                    {% for date in all_dates %}
-                    <th>{{ date }}</th>
+    {% if all_members|length == 0 or all_dates|length == 0 %}
+        <div class="alert alert-warning">No roster data available for the selected filters.</div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-bordered roster-heatmap-table">
+                <thead>
+                    <tr>
+                        <th>Team Member</th>
+                        {% for date in all_dates %}
+                        <th>{{ date }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in all_members %}
+                        <tr>
+                            <td>{{ member.name }}</td>
+                            {% for date in all_dates %}
+                                {% set shift_code = roster_data[member.name][date] %}
+                                <td class="
+                                    {% if shift_code == 'D' %}roster-shift-D{% elif shift_code == 'E' %}roster-shift-E{% elif shift_code == 'N' %}roster-shift-N{% elif shift_code == 'LE' %}roster-shift-LE{% elif shift_code == 'G' %}roster-shift-G{% else %}roster-shift-empty{% endif %}">
+                                    {{ shift_code }}
+                                </td>
+                            {% endfor %}
+                        </tr>
                     {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for member in all_members %}
-                <tr>
-                    <td>{{ member.name }}</td>
-                    {% for date in all_dates %}
-                        {% set shift_code = roster_data[member.name][date] %}
-                        <td class="
-                            {% if shift_code == 'D' %}roster-shift-D{% elif shift_code == 'E' %}roster-shift-E{% elif shift_code == 'N' %}roster-shift-N{% elif shift_code == 'LE' %}roster-shift-LE{% elif shift_code == 'G' %}roster-shift-G{% else %}roster-shift-empty{% endif %}">
-                            {{ shift_code }}
-                        </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
     {% endif %}
 </div>
 {% if filter_date %}
@@ -160,26 +160,5 @@
     {% endif %}
 {% endif %}
 
-{% if all_dates and all_members %}
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Team Member</th>
-            {% for date in all_dates %}
-            <th>{{ date }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for member in all_members %}
-        <tr>
-            <td>{{ member.name }}</td>
-            {% for date in all_dates %}
-            <td>{{ roster_data[member.name][date] }}</td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endif %}
+{# Removed bottom table view #}
 {% endblock %}

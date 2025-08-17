@@ -12,22 +12,34 @@ reports_bp = Blueprint('reports', __name__)
 def handover_reports():
     date_filter = request.args.get('date')
     shift_type_filter = request.args.get('shift_type')
+    from models.models import Account, Team
     query = Shift.query
+    account_id = None
+    team_id = None
+    accounts = []
+    teams = []
     if current_user.role == 'super_admin':
-        account_id = session.get('selected_account_id')
-        team_id = session.get('selected_team_id')
+        accounts = Account.query.filter_by(is_active=True).all()
+        account_id = request.args.get('account_id') or session.get('selected_account_id')
+        teams = Team.query.filter_by(is_active=True)
         if account_id:
-            query = query.filter_by(account_id=account_id)
-        if team_id:
-            query = query.filter_by(team_id=team_id)
+            teams = teams.filter_by(account_id=account_id)
+        teams = teams.all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
     elif current_user.role == 'account_admin':
         account_id = current_user.account_id
-        team_id = session.get('selected_team_id')
-        query = query.filter_by(account_id=account_id)
-        if team_id:
-            query = query.filter_by(team_id=team_id)
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
     else:
-        query = query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+        account_id = current_user.account_id
+        team_id = current_user.team_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = [Team.query.get(team_id)] if team_id else []
+    if account_id:
+        query = query.filter_by(account_id=account_id)
+    if team_id:
+        query = query.filter_by(team_id=team_id)
     if date_filter:
         try:
             date_obj = datetime.strptime(date_filter, '%Y-%m-%d').date()

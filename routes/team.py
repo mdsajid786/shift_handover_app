@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from models.models import TeamMember
 from app import db
@@ -50,8 +50,33 @@ def team():
                     else:
                         flash(f'Error deleting team member: {e}', 'danger')
         return redirect(url_for('team.team'))
+    from models.models import Account, Team
     tm_query = TeamMember.query
-    if current_user.role != 'admin':
-        tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
+    account_id = None
+    team_id = None
+    accounts = []
+    teams = []
+    if current_user.role == 'super_admin':
+        accounts = Account.query.filter_by(is_active=True).all()
+        account_id = request.args.get('account_id') or session.get('selected_account_id')
+        teams = Team.query.filter_by(is_active=True)
+        if account_id:
+            teams = teams.filter_by(account_id=account_id)
+        teams = teams.all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
+    elif current_user.role == 'account_admin':
+        account_id = current_user.account_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
+    else:
+        account_id = current_user.account_id
+        team_id = current_user.team_id
+        accounts = [Account.query.get(account_id)] if account_id else []
+        teams = [Team.query.get(team_id)] if team_id else []
+    if account_id:
+        tm_query = tm_query.filter_by(account_id=account_id)
+    if team_id:
+        tm_query = tm_query.filter_by(team_id=team_id)
     members = tm_query.all()
-    return render_template('team_details.html', members=members)
+    return render_template('team_details.html', members=members, accounts=accounts, teams=teams, selected_account_id=account_id, selected_team_id=team_id)

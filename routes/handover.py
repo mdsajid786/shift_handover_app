@@ -125,7 +125,16 @@ def edit_handover(shift_id):
             vals = request.form.getlist(field)
             for val in vals:
                 if val.strip():
-                    incident = Incident(title=val, status=inc_type if inc_type in ['Active','Closed'] else '', priority='High' if inc_type=='Priority' else '', handover=val if inc_type=='Handover' else '', shift_id=shift.id, type=inc_type)
+                    incident = Incident(
+                        title=val,
+                        status=inc_type if inc_type in ['Active','Closed'] else '',
+                        priority='High' if inc_type=='Priority' else '',
+                        handover=val if inc_type=='Handover' else '',
+                        shift_id=shift.id,
+                        type=inc_type,
+                        account_id=shift.account_id,
+                        team_id=shift.team_id
+                    )
                     db.session.add(incident)
         add_incident('open_incidents', 'Active')
         add_incident('closed_incidents', 'Closed')
@@ -165,6 +174,8 @@ def edit_handover(shift_id):
                         existing_kp.shift_id = shift.id
                         existing_kp.responsible_engineer_id = int(responsible_id) if responsible_id else None
                         existing_kp.status = status
+                        existing_kp.account_id = shift.account_id
+                        existing_kp.team_id = shift.team_id
                         db.session.add(existing_kp)
                 else:
                     kp = ShiftKeyPoint(
@@ -172,7 +183,9 @@ def edit_handover(shift_id):
                         status=status,
                         responsible_engineer_id=int(responsible_id) if responsible_id else None,
                         shift_id=shift.id,
-                        jira_id=jira_id if jira_id else None
+                        jira_id=jira_id if jira_id else None,
+                        account_id=shift.account_id,
+                        team_id=shift.team_id
                     )
                     db.session.add(kp)
         db.session.commit()
@@ -225,7 +238,7 @@ def edit_handover(shift_id):
 @handover_bp.route('/handover', methods=['GET', 'POST'])
 @login_required
 def handover():
-    team_members = TeamMember.query.all()
+    team_members = TeamMember.query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id).all()
     ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
     default_date = ist_now.date()
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
@@ -241,7 +254,9 @@ def handover():
             date=date,
             current_shift_type=current_shift_type,
             next_shift_type=next_shift_type,
-            status='draft' if action == 'save' else 'sent'
+            status='draft' if action == 'save' else 'sent',
+            account_id=current_user.account_id,
+            team_id=current_user.team_id
         )
         db.session.add(shift)
         db.session.commit()
@@ -271,7 +286,16 @@ def handover():
             vals = request.form.getlist(field)
             for val in vals:
                 if val.strip():
-                    incident = Incident(title=val, status=inc_type if inc_type in ['Active','Closed'] else '', priority='High' if inc_type=='Priority' else '', handover=val if inc_type=='Handover' else '', shift_id=shift.id, type=inc_type)
+                    incident = Incident(
+                        title=val,
+                        status=inc_type if inc_type in ['Active','Closed'] else '',
+                        priority='High' if inc_type=='Priority' else '',
+                        handover=val if inc_type=='Handover' else '',
+                        shift_id=shift.id,
+                        type=inc_type,
+                        account_id=current_user.account_id,
+                        team_id=current_user.team_id
+                    )
                     db.session.add(incident)
         add_incident('open_incidents', 'Active')
         add_incident('closed_incidents', 'Closed')
@@ -312,6 +336,8 @@ def handover():
                         existing_kp.shift_id = shift.id
                         existing_kp.responsible_engineer_id = int(responsible_id) if responsible_id else None
                         existing_kp.status = status
+                        existing_kp.account_id = current_user.account_id
+                        existing_kp.team_id = current_user.team_id
                         db.session.add(existing_kp)
                 else:
                     kp = ShiftKeyPoint(
@@ -319,7 +345,9 @@ def handover():
                         status=status,
                         responsible_engineer_id=int(responsible_id) if responsible_id else None,
                         shift_id=shift.id,
-                        jira_id=jira_id if jira_id else None
+                        jira_id=jira_id if jira_id else None,
+                        account_id=current_user.account_id,
+                        team_id=current_user.team_id
                     )
                     db.session.add(kp)
         db.session.commit()

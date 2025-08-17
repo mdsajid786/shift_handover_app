@@ -3,6 +3,33 @@
 <div class="container">
     <h2 class="mb-4">Key Points Updates</h2>
     <form method="get" class="row g-2 mb-3">
+        {% if current_user.role == 'super_admin' %}
+        <div class="col-auto">
+            <select name="account_id" class="form-select">
+                <option value="">All Accounts</option>
+                {% for account in accounts %}
+                <option value="{{ account.id }}" {% if account.id|string == selected_account_id|string %}selected{% endif %}>{{ account.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="team_id" class="form-select">
+                <option value="">All Teams</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}" {% if team.id|string == selected_team_id|string %}selected{% endif %}>{{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% elif current_user.role == 'account_admin' %}
+        <div class="col-auto">
+            <select name="team_id" class="form-select">
+                <option value="">All Teams</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}" {% if team.id|string == selected_team_id|string %}selected{% endif %}>{{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
         <div class="col-auto">
             <select name="status" class="form-select">
                 <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>

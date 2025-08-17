@@ -1,5 +1,6 @@
 
 import logging
+from flask import session
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 import pandas as pd
@@ -12,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 roster_upload_bp = Blueprint('roster_upload', __name__)
 
-UPLOAD_FOLDER = '/tmp/uploads'
+UPLOAD_FOLDER = 'uploads/roster'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 @roster_upload_bp.route('/roster-upload', methods=['GET', 'POST'])
@@ -27,126 +29,149 @@ def roster_upload():
             if current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
                 feedback_msgs.append('You do not have permission to upload shift roster.')
                 logger.warning('Permission denied for upload.')
+                for msg in feedback_msgs:
+                    flash(msg)
+                return redirect(url_for('roster_upload.roster_upload'))
+
+            # Handle file upload
+            file = request.files.get('file')
+            if not file or file.filename == '':
+                flash('No file selected.')
+                return redirect(url_for('roster_upload.roster_upload'))
+            if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
+                flash('Invalid file type. Only XLSX files are allowed.')
+                return redirect(url_for('roster_upload.roster_upload'))
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+
+            # Parse XLSX
+            try:
+                df = pd.read_excel(filepath)
+            except Exception as e:
+                flash(f'Error reading Excel file: {e}')
+                return redirect(url_for('roster_upload.roster_upload'))
+
+            # Support wide format: first column is 'Member Name', rest are dates
+            if 'Member Name' in df.columns:
+                long_df = df.melt(id_vars=['Member Name'], var_name='Date', value_name='Shift')
+                long_df = long_df.rename(columns={'Member Name': 'Team Member'})
+                # Drop rows with missing Team Member, Date, or Shift
+                long_df = long_df.dropna(subset=['Team Member', 'Date', 'Shift'])
+                long_df['Date'] = pd.to_datetime(long_df['Date'])
+                df = long_df[['Date', 'Shift', 'Team Member']]
+
+            # Validate columns
+            required_cols = {'Date', 'Shift', 'Team Member'}
+            if not required_cols.issubset(set(df.columns)):
+                flash(f'Missing required columns. Found: {df.columns.tolist()}')
+                return redirect(url_for('roster_upload.roster_upload'))
+
+            # Get account/team from user
+            from models.models import Account, Team
+            account_id = None
+            team_id = None
+            accounts = []
+            teams = []
+            if current_user.role == 'super_admin':
+                accounts = Account.query.filter_by(is_active=True).all()
+                account_id = request.args.get('account_id') or (session.get('selected_account_id') if hasattr(session, 'get') else None)
+                teams = Team.query.filter_by(is_active=True)
+                if account_id:
+                    teams = teams.filter_by(account_id=account_id)
+                teams = teams.all()
+                team_id = request.args.get('team_id') or (session.get('selected_team_id') if hasattr(session, 'get') else None)
+            elif current_user.role == 'account_admin':
+                account_id = getattr(current_user, 'account_id', None)
+                accounts = [Account.query.get(account_id)] if account_id else []
+                teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
+                team_id = request.args.get('team_id') or (session.get('selected_team_id') if hasattr(session, 'get') else None)
             else:
-                file = request.files.get('file')
-                if not file:
-                    feedback_msgs.append('No file selected.')
-                    logger.warning('No file selected for upload.')
-                elif not file.filename.endswith('.xlsx'):
-                    feedback_msgs.append('Please upload a valid .xlsx file')
-                    logger.warning('Invalid file type uploaded.')
-                else:
-                    filename = secure_filename(file.filename)
-                    filepath = os.path.join(UPLOAD_FOLDER, filename)
-                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                    file.save(filepath)
-                    logger.info(f"File saved to {filepath}")
-                    try:
-                        df = pd.read_excel(filepath)
-                    except Exception as e:
-                        feedback_msgs.append(f'Error reading Excel file: {e}')
-                        logger.error(f'Error reading Excel file: {e}')
-                        os.remove(filepath)
-                        for msg in feedback_msgs:
-                            flash(msg)
-                        return redirect(url_for('roster_upload.roster_upload'))
-                    # Flatten matrix format: each cell becomes a row
-                    from models.models import ShiftRoster, TeamMember, db
-                    saved_count = 0
-                    error_msgs = []
-                    # Permission check for team admin
-                    if current_user.role == 'team_admin':
-                        allowed_account = current_user.account_id
-                        allowed_team = current_user.team_id
-                    else:
-                        allowed_account = None
-                        allowed_team = None
-                    from datetime import datetime
-                    matrix_summary = []
-                    # Assume first column is member name, first row is date headers
-                    date_columns = list(df.columns)[1:]
-                    from flask import session
-                    selected_account_id = session.get('selected_account_id')
-                    selected_team_id = session.get('selected_team_id')
-                    flash(f"Upload using selected_account_id={selected_account_id}, selected_team_id={selected_team_id}, user_account_id={current_user.account_id}, user_team_id={current_user.team_id}")
-                    for row_idx, row in df.iterrows():
-                        member_name = row[0]
-                        for col_idx, date_raw in enumerate(date_columns):
-                            shift_code = row[date_raw]
-                            if pd.isna(shift_code) or str(shift_code).strip() == '':
-                                continue
-                            # Parse date
-                            date = None
-                            try:
-                                if isinstance(date_raw, str) and '-' in date_raw:
-                                    date = datetime.strptime(date_raw, '%d-%m-%Y').date()
-                                else:
-                                    date = pd.to_datetime(date_raw).date()
-                            except Exception as e:
-                                error_msgs.append(f"Row {row_idx+1}, Col {col_idx+2}: Invalid date header '{date_raw}': {e}")
-                                logger.warning(f"Row {row_idx+1}, Col {col_idx+2}: Invalid date header '{date_raw}': {e}")
-                                continue
-                            # Use selected account/team from session if available, else fallback to user
-                            account_id = selected_account_id if selected_account_id is not None else current_user.account_id
-                            team_id = selected_team_id if selected_team_id is not None else current_user.team_id
-                            logger.info(f"[CELL] date={date}, member_name={member_name}, shift_code={shift_code}, account_id={account_id}, team_id={team_id}")
-                            # Team admin can only upload for their own account/team
-                            if current_user.role == 'team_admin' and (int(account_id) != allowed_account or int(team_id) != allowed_team):
-                                error_msgs.append(f"Row {row_idx+1}, Col {col_idx+2}: You do not have permission to upload for account/team {account_id}/{team_id}.")
-                                logger.warning(f"Row {row_idx+1}, Col {col_idx+2}: Permission denied for account/team {account_id}/{team_id}.")
-                                continue
-                            member = TeamMember.query.filter_by(name=member_name, account_id=account_id, team_id=team_id).first()
-                            if not member:
-                                # Auto-create missing team member
-                                try:
-                                    member = TeamMember(name=member_name, account_id=account_id, team_id=team_id)
-                                    db.session.add(member)
-                                    db.session.flush()  # Get member.id
-                                    logger.info(f"Created new team member: {member_name} for account_id={account_id}, team_id={team_id}")
-                                    flash(f"Created new team member: {member_name} for account_id={account_id}, team_id={team_id}")
-                                    matrix_summary.append(f"Row {row_idx+1}, Col {col_idx+2}: Created new team member '{member_name}' for account/team.")
-                                except Exception as e:
-                                    error_msgs.append(f"Row {row_idx+1}, Col {col_idx+2}: Error creating team member '{member_name}': {e}")
-                                    logger.error(f"Row {row_idx+1}, Col {col_idx+2}: Error creating team member '{member_name}': {e}")
-                                    continue
-                            # Check for duplicate entry
-                            existing = ShiftRoster.query.filter_by(date=date, team_member_id=member.id, account_id=account_id, team_id=team_id).first()
-                            if existing:
-                                error_msgs.append(f"Row {row_idx+1}, Col {col_idx+2}: Duplicate entry for {member_name} on {date}.")
-                                logger.warning(f"Row {row_idx+1}, Col {col_idx+2}: Duplicate entry for {member_name} on {date}.")
-                                continue
-                            try:
-                                roster = ShiftRoster(date=date, team_member_id=member.id, shift_code=str(shift_code), account_id=account_id, team_id=team_id)
-                                db.session.add(roster)
-                                saved_count += 1
-                                logger.info(f"Row {row_idx+1}, Col {col_idx+2}: Saved roster entry for {member_name} on {date}.")
-                                flash(f"Saved roster entry for {member_name} on {date} (account_id={account_id}, team_id={team_id})")
-                                matrix_summary.append(f"Row {row_idx+1}, Col {col_idx+2}: date={date}, member_name={member_name}, shift_code={shift_code}, account_id={account_id}, team_id={team_id}")
-                            except Exception as e:
-                                error_msgs.append(f"Row {row_idx+1}, Col {col_idx+2}: Error saving cell: {e}")
-                                logger.error(f"Row {row_idx+1}, Col {col_idx+2}: Error saving cell: {e}")
-                    flash(f"Upload attempted for account_id={account_id}, team_id={team_id}, user={getattr(current_user, 'username', None)}.")
-                    if saved_count > 0:
-                        db.session.commit()
-                        feedback_msgs.append(f"{saved_count} shift roster cells uploaded and saved successfully!")
-                        logger.info(f"{saved_count} shift roster cells uploaded and saved successfully!")
-                        flash("Upload summary:")
-                        for line in matrix_summary:
-                            flash(line)
-                    else:
-                        feedback_msgs.append("No valid cells were saved.")
-                        logger.warning("No valid cells were saved.")
-                        flash("Upload summary:")
-                        for line in matrix_summary:
-                            flash(line)
-                    if error_msgs:
-                        feedback_msgs.extend(error_msgs)
-                    os.remove(filepath)
-                    logger.info(f"File {filepath} removed after processing.")
-            for msg in feedback_msgs:
-                flash(msg)
-            # Always redirect after POST so flash messages are visible
-            return redirect(url_for('roster.roster'))
+                account_id = getattr(current_user, 'account_id', None)
+                team_id = getattr(current_user, 'team_id', None)
+                accounts = [Account.query.get(account_id)] if account_id else []
+                teams = [Team.query.get(team_id)] if team_id else []
+            # Import models and db inside function to avoid circular import
+            from models.models import ShiftRoster, TeamMember, db
+
+            # Determine month/year from first row
+            df['Date'] = pd.to_datetime(df['Date'])
+            month = df['Date'].dt.month.iloc[0]
+            year = df['Date'].dt.year.iloc[0]
+
+            # Override: delete existing roster for this month/year/account/team
+            db.session.query(ShiftRoster).filter(
+                ShiftRoster.account_id == account_id,
+                ShiftRoster.team_id == team_id,
+                ShiftRoster.date >= pd.Timestamp(year=year, month=month, day=1),
+                ShiftRoster.date < pd.Timestamp(year=year, month=month, day=1) + pd.offsets.MonthEnd(1)
+            ).delete()
+            db.session.commit()
+
+            # Insert new roster entries, skipping duplicate members per date/shift
+            inserted = 0
+            skipped = 0
+            for _, row in df.iterrows():
+                member_name = row['Team Member']
+                date = row['Date']
+                shift_code = row['Shift']
+                # Robust skip for missing/NaN values
+                if pd.isna(member_name) or pd.isna(date) or pd.isna(shift_code):
+                    skipped += 1
+                    continue
+                date = pd.to_datetime(date).date()
+                member_name = str(member_name).strip()
+                shift_code = str(shift_code).strip()
+                if not member_name or not shift_code:
+                    skipped += 1
+                    continue
+                # Find team member
+                # Normalize member name for matching
+                norm_name = member_name.strip().lower()
+                member = TeamMember.query.filter(
+                    db.func.lower(db.func.trim(TeamMember.name)) == norm_name,
+                    TeamMember.account_id == account_id,
+                    TeamMember.team_id == team_id
+                ).first()
+                if not member:
+                    # Fallback: try partial/case-insensitive match
+                    member = TeamMember.query.filter(
+                        TeamMember.name.ilike(f"%{member_name.strip()}%"),
+                        TeamMember.account_id == account_id,
+                        TeamMember.team_id == team_id
+                    ).first()
+                if not member:
+                    # Create new TeamMember if not found
+                    member = TeamMember(
+                        name=member_name.strip(),
+                        email=f"{member_name.strip().replace(' ', '_').lower()}@example.com",
+                        contact_number="N/A",
+                        role="AutoImported",
+                        account_id=account_id,
+                        team_id=team_id
+                    )
+                    db.session.add(member)
+                    db.session.flush()  # Get member.id
+                # Check for duplicate
+                exists = ShiftRoster.query.filter_by(date=date, shift_code=shift_code, team_member_id=member.id, account_id=account_id, team_id=team_id).first()
+                if exists:
+                    skipped += 1
+                    continue
+                entry = ShiftRoster(
+                    date=date,
+                    shift_code=shift_code,
+                    team_member_id=member.id,
+                    account_id=account_id,
+                    team_id=team_id
+                )
+                db.session.add(entry)
+                inserted += 1
+            db.session.commit()
+            flash(f'Roster uploaded: {inserted} entries added, {skipped} skipped.')
+            # Optionally show table preview
+            table_data = df.head(20).to_dict(orient='records')
+            columns = df.columns.tolist()
+            return render_template('shift_roster_upload.html', table_data=table_data, columns=columns)
         except Exception as e:
             logger.error(f"Unexpected error in upload handler: {e}")
             from models.models import db
