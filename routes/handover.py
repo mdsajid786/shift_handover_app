@@ -238,7 +238,29 @@ def edit_handover(shift_id):
 @handover_bp.route('/handover', methods=['GET', 'POST'])
 @login_required
 def handover():
-    team_members = TeamMember.query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id).all()
+    # Get selected account/team for Super Admin
+    account_id = request.form.get('account_id') if current_user.role == 'super_admin' else current_user.account_id
+    team_id_raw = request.form.get('team_id') if current_user.role in ['super_admin', 'account_admin'] else current_user.team_id
+    try:
+        team_id = int(team_id_raw) if team_id_raw not in (None, '', 'None') else None
+    except (TypeError, ValueError):
+        team_id = None
+    # Validate team_id exists
+    from models.models import Team
+    valid_team = Team.query.get(team_id) if team_id else None
+    if request.method == 'POST' and not valid_team:
+        flash('Please select a valid Team before submitting the handover.')
+        return redirect(url_for('handover.handover'))
+    # If GET and no valid team, show form with error and disable submit
+    show_team_error = not valid_team
+    from models.models import Team
+    if current_user.role == 'super_admin':
+        teams = Team.query.filter_by(status='active').all()
+    elif current_user.role == 'account_admin':
+        teams = Team.query.filter_by(account_id=current_user.account_id, status='active').all()
+    else:
+        teams = Team.query.filter_by(account_id=current_user.account_id, id=current_user.team_id, status='active').all()
+    team_members = TeamMember.query.filter_by(account_id=account_id, team_id=team_id).all() if account_id and team_id else []
     ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
     default_date = ist_now.date()
     shift_map = {'Morning': 'D', 'Evening': 'E', 'Night': 'N'}
@@ -255,8 +277,8 @@ def handover():
             current_shift_type=current_shift_type,
             next_shift_type=next_shift_type,
             status='draft' if action == 'save' else 'sent',
-            account_id=current_user.account_id,
-            team_id=current_user.team_id
+            account_id=account_id,
+            team_id=team_id
         )
         db.session.add(shift)
         db.session.commit()
@@ -293,8 +315,8 @@ def handover():
                         handover=val if inc_type=='Handover' else '',
                         shift_id=shift.id,
                         type=inc_type,
-                        account_id=current_user.account_id,
-                        team_id=current_user.team_id
+                        account_id=account_id,
+                        team_id=team_id
                     )
                     db.session.add(incident)
         add_incident('open_incidents', 'Active')
@@ -336,8 +358,8 @@ def handover():
                         existing_kp.shift_id = shift.id
                         existing_kp.responsible_engineer_id = int(responsible_id) if responsible_id else None
                         existing_kp.status = status
-                        existing_kp.account_id = current_user.account_id
-                        existing_kp.team_id = current_user.team_id
+                        existing_kp.account_id = account_id
+                        existing_kp.team_id = team_id
                         db.session.add(existing_kp)
                 else:
                     kp = ShiftKeyPoint(
@@ -346,8 +368,8 @@ def handover():
                         responsible_engineer_id=int(responsible_id) if responsible_id else None,
                         shift_id=shift.id,
                         jira_id=jira_id if jira_id else None,
-                        account_id=current_user.account_id,
-                        team_id=current_user.team_id
+                        account_id=account_id,
+                        team_id=team_id
                     )
                     db.session.add(kp)
         db.session.commit()
@@ -413,6 +435,7 @@ def handover():
     # Always show at least one blank row for new key point entry in the form
     return render_template('handover_form.html',
         team_members=team_members,
+        teams=teams,
         current_engineers=current_engineers,
         next_engineers=next_engineers,
         current_shift_type=current_shift_type,
@@ -423,5 +446,6 @@ def handover():
         closed_incidents=[],
         priority_incidents=[],
         handover_incidents=[],
-        today=default_date.strftime('%Y-%m-%d')
+        today=default_date.strftime('%Y-%m-%d'),
+        show_team_error=show_team_error
     )

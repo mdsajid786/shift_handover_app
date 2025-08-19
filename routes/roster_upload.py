@@ -53,9 +53,12 @@ def roster_upload():
                 return redirect(url_for('roster_upload.roster_upload'))
 
             # Support wide format: first column is 'Member Name', rest are dates
-            if 'Member Name' in df.columns:
-                long_df = df.melt(id_vars=['Member Name'], var_name='Date', value_name='Shift')
-                long_df = long_df.rename(columns={'Member Name': 'Team Member'})
+            # Normalize all column headers to string and strip whitespace
+            df.columns = [str(col).strip() for col in df.columns]
+            member_name_col = next((c for c in df.columns if c.lower() == 'member name'.lower()), None)
+            if member_name_col:
+                long_df = df.melt(id_vars=[member_name_col], var_name='Date', value_name='Shift')
+                long_df = long_df.rename(columns={member_name_col: 'Team Member'})
                 # Drop rows with missing Team Member, Date, or Shift
                 long_df = long_df.dropna(subset=['Team Member', 'Date', 'Shift'])
                 long_df['Date'] = pd.to_datetime(long_df['Date'])
@@ -63,8 +66,11 @@ def roster_upload():
 
             # Validate columns
             required_cols = {'Date', 'Shift', 'Team Member'}
+            df.columns = [str(col).strip() for col in df.columns]
             if not required_cols.issubset(set(df.columns)):
-                flash(f'Missing required columns. Found: {df.columns.tolist()}')
+                flash(f'Missing required columns. Found: {[str(c) for c in df.columns]}')
+                # Debug: show all column types
+                flash(f'Column types: {[type(c) for c in df.columns]}')
                 return redirect(url_for('roster_upload.roster_upload'))
 
             # Get account/team from user
@@ -99,23 +105,13 @@ def roster_upload():
             month = df['Date'].dt.month.iloc[0]
             year = df['Date'].dt.year.iloc[0]
 
-            # Override: delete existing roster for this month/year/account/team
-            db.session.query(ShiftRoster).filter(
-                ShiftRoster.account_id == account_id,
-                ShiftRoster.team_id == team_id,
-                ShiftRoster.date >= pd.Timestamp(year=year, month=month, day=1),
-                ShiftRoster.date < pd.Timestamp(year=year, month=month, day=1) + pd.offsets.MonthEnd(1)
-            ).delete()
-            db.session.commit()
-
-            # Insert new roster entries, skipping duplicate members per date/shift
+            # Enhancement: For same month, override roster for existing members, add new members, avoid duplicates
             inserted = 0
             skipped = 0
             for _, row in df.iterrows():
                 member_name = row['Team Member']
                 date = row['Date']
                 shift_code = row['Shift']
-                # Robust skip for missing/NaN values
                 if pd.isna(member_name) or pd.isna(date) or pd.isna(shift_code):
                     skipped += 1
                     continue
@@ -125,8 +121,6 @@ def roster_upload():
                 if not member_name or not shift_code:
                     skipped += 1
                     continue
-                # Find team member
-                # Normalize member name for matching
                 norm_name = member_name.strip().lower()
                 member = TeamMember.query.filter(
                     db.func.lower(db.func.trim(TeamMember.name)) == norm_name,
@@ -134,14 +128,13 @@ def roster_upload():
                     TeamMember.team_id == team_id
                 ).first()
                 if not member:
-                    # Fallback: try partial/case-insensitive match
                     member = TeamMember.query.filter(
                         TeamMember.name.ilike(f"%{member_name.strip()}%"),
                         TeamMember.account_id == account_id,
                         TeamMember.team_id == team_id
                     ).first()
                 if not member:
-                    # Create new TeamMember if not found
+                    # New member: create in team details
                     member = TeamMember(
                         name=member_name.strip(),
                         email=f"{member_name.strip().replace(' ', '_').lower()}@example.com",
@@ -152,11 +145,14 @@ def roster_upload():
                     )
                     db.session.add(member)
                     db.session.flush()  # Get member.id
-                # Check for duplicate
-                exists = ShiftRoster.query.filter_by(date=date, shift_code=shift_code, team_member_id=member.id, account_id=account_id, team_id=team_id).first()
-                if exists:
-                    skipped += 1
-                    continue
+                # For existing members, override roster for same month
+                # Delete any existing roster for this member/date/account/team
+                db.session.query(ShiftRoster).filter(
+                    ShiftRoster.account_id == account_id,
+                    ShiftRoster.team_id == team_id,
+                    ShiftRoster.team_member_id == member.id,
+                    ShiftRoster.date == date
+                ).delete()
                 entry = ShiftRoster(
                     date=date,
                     shift_code=shift_code,
@@ -167,7 +163,7 @@ def roster_upload():
                 db.session.add(entry)
                 inserted += 1
             db.session.commit()
-            flash(f'Roster uploaded: {inserted} entries added, {skipped} skipped.')
+            flash(f'Roster uploaded: {inserted} entries added, {skipped} skipped. Existing members updated, new members created.')
             # Optionally show table preview
             table_data = df.head(20).to_dict(orient='records')
             columns = df.columns.tolist()

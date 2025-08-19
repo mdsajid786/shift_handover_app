@@ -41,26 +41,59 @@ def roster():
     teams = []
     if current_user.role == 'super_admin':
         accounts = Account.query.filter_by(is_active=True).all()
-        account_id = request.args.get('account_id') or session.get('selected_account_id')
+        account_id = request.args.get('account_id')
+        team_id = request.args.get('team_id')
+        # Update session with selected values for consistent filtering
+        if account_id:
+            session['selected_account_id'] = account_id
+        else:
+            account_id = session.get('selected_account_id')
+        if team_id:
+            try:
+                team_id = int(team_id)
+                session['selected_team_id'] = team_id
+            except (TypeError, ValueError):
+                team_id = None
+        else:
+            team_id = session.get('selected_team_id')
         teams = Team.query.filter_by(is_active=True)
         if account_id:
             teams = teams.filter_by(account_id=account_id)
         teams = teams.all()
-        team_id = request.args.get('team_id') or session.get('selected_team_id')
+        if account_id:
+            query = query.filter(ShiftRoster.account_id==account_id)
+        if team_id:
+            query = query.filter(ShiftRoster.team_id==team_id)
+        # Ensure team_id is int for team_members query as well
+        tm_query = TeamMember.query
+        if account_id:
+            tm_query = tm_query.filter_by(account_id=account_id)
+        if team_id:
+            tm_query = tm_query.filter_by(team_id=team_id)
     elif current_user.role == 'account_admin':
         account_id = current_user.account_id
         accounts = [Account.query.get(account_id)] if account_id else []
         teams = Team.query.filter_by(account_id=account_id, is_active=True).all()
         team_id = request.args.get('team_id') or session.get('selected_team_id')
+        # Ensure team_id is int if present
+        if team_id:
+            try:
+                team_id = int(team_id)
+            except (TypeError, ValueError):
+                team_id = None
+        query = query.filter(ShiftRoster.account_id==account_id)
+        if team_id:
+            query = query.filter(ShiftRoster.team_id==team_id)
+        else:
+            # If no team selected, show all teams for account
+            team_ids = [t.id for t in teams]
+            query = query.filter(ShiftRoster.team_id.in_(team_ids))
     else:
         account_id = current_user.account_id
         team_id = current_user.team_id
         accounts = [Account.query.get(account_id)] if account_id else []
         teams = [Team.query.get(team_id)] if team_id else []
-    if account_id:
         query = query.filter(ShiftRoster.account_id==account_id)
-    # Only filter by team_id if it is set and not empty string
-    if team_id:
         query = query.filter(ShiftRoster.team_id==team_id)
     # Removed debug flash
     if month:
@@ -80,10 +113,19 @@ def roster():
             tm_query = tm_query.filter_by(team_id=team_id)
     elif current_user.role == 'account_admin':
         account_id = current_user.account_id
-        team_id = session.get('selected_team_id')
+        team_id = request.args.get('team_id') or session.get('selected_team_id')
+        if team_id:
+            try:
+                team_id = int(team_id)
+            except (TypeError, ValueError):
+                team_id = None
         tm_query = tm_query.filter_by(account_id=account_id)
         if team_id:
             tm_query = tm_query.filter_by(team_id=team_id)
+        else:
+            # If no team selected, show all team members for account
+            team_ids = [t.id for t in teams]
+            tm_query = tm_query.filter(TeamMember.team_id.in_(team_ids))
     else:
         tm_query = tm_query.filter_by(account_id=current_user.account_id, team_id=current_user.team_id)
     all_members_all = tm_query.all()

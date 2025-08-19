@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
 from flask import session
 from models.models import Shift, Incident, ShiftKeyPoint, TeamMember
-from app import db
+ 
 from datetime import datetime
 
 reports_bp = Blueprint('reports', __name__)
@@ -10,6 +10,7 @@ reports_bp = Blueprint('reports', __name__)
 @reports_bp.route('/handover-reports', methods=['GET'])
 @login_required
 def handover_reports():
+    from app import db
     date_filter = request.args.get('date')
     shift_type_filter = request.args.get('shift_type')
     from models.models import Account, Team
@@ -69,4 +70,13 @@ def handover_reports():
             'incidents': incidents,
             'key_points': key_points_data
         })
-    return render_template('handover_reports.html', shift_data=shift_data, date_filter=date_filter or '', shift_type_filter=shift_type_filter or '')
+    return render_template(
+        'handover_reports.html',
+        shift_data=shift_data,
+        date_filter=date_filter or '',
+        shift_type_filter=shift_type_filter or '',
+        accounts=accounts,
+        teams=teams,
+        selected_account_id=account_id,
+        selected_team_id=team_id
+    )
