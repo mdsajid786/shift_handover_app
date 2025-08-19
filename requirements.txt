@@ -10,3 +10,4 @@ reportlab
 cryptography
 openpyxl
 Flask-Migrate
+pytest
