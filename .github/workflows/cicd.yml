@@ -33,8 +33,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Build Docker image
+  # Removed orphaned step
       - name: Build and start all containers with docker-compose
         run: |
           docker-compose up -d --build
