@@ -24,11 +24,11 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URI=mysql+pymysql://user:password@db/shift_handover
-      - SMTP_SERVER=smtp.example.com
+      - SMTP_SERVER=smtp.gmail.com
       - SMTP_PORT=587
-      - SMTP_USERNAME=team@example.com
-      - SMTP_PASSWORD=password
-      - TEAM_EMAIL=team@example.com
+      - SMTP_USERNAME=mdsajid020@gmail.com
+      - SMTP_PASSWORD=uovrivxvitovrjcu
+      - TEAM_EMAIL=mdsajid020@gmail.com
     depends_on:
       - db
 
